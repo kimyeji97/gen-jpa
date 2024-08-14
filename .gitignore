@@ -1,0 +1,9 @@
+/__pycache__/
+/__pycache__/*
+/gen_mybatis_local.py
+/gen_mybatis_admin_local.py
+
+# intellij
+.idea
+old/gen-mybatis.iml
+/gen-mybatis.iml
