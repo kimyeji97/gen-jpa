@@ -5,5 +5,5 @@
 
 # intellij
 .idea
-old/gen-mybatis.iml
-/gen-mybatis.iml
+old/gen-jpa.iml
+/gen-jpa.iml

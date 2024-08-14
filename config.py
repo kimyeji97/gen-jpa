@@ -10,7 +10,7 @@ import sys, os
 
 __IS_VERSION_3__ = sys.version_info.major == 3
 __IS_WINDOW__ = os.name == 'Windows' or os.name == 'nt'
-__GEN_TARGET__ = ['domain', 'mapper', 'xml']
+__GEN_TARGET__ = ['entity', 'repository']
 __TEMP_DIR__ = 'C:\\Temp\generator' if __IS_WINDOW__ else os.path.join(os.path.expanduser("~"), "Temp", "generator")
 
 _SP4 = ' ' * 4

@@ -8,7 +8,7 @@ import common as common
 import gen_xml_postgresql as gen_postgresql_xml
 import gen_xml_mysql as gen_mysql_xml
 import gen_entity as gen_model
-import gen_repository as gen_mapper
+import gen_repository as gen_repository
 import mysql.connector as mysql
 import psycopg2
 
@@ -23,30 +23,37 @@ class PackagePathInfo:
     date_time_format = 'org.springframework.format.annotation.DateTimeFormat'
     json_property = 'com.fasterxml.jackson.annotation.JsonProperty'
     json_format = 'com.fasterxml.jackson.annotation.JsonFormat'
+
     lombok_data = 'lombok.Data'
     lombok_builder = 'lombok.Builder'
     lombok_extend_hashcode = 'lombok.EqualsAndHashCode'
     lombok_all_args_const = 'lombok.AllArgsConstructor'
     lombok_no_args_const = 'lombok.NoArgsConstructor'
     lombok_toString = 'lombok.ToString'
+    lombok_required_args_constructor = 'lombok.RequiredArgsConstructor'
+
     annotations_param = 'org.apache.ibatis.annotations.Param'
+
     jakarta_persistence_all = 'jakarta.persistence.*'
     jakarta_persistence_transient = 'jakarta.persistence.Transient'
     jakarta_persistence_entity = 'jakarta.persistence.Entity'
     jakarta_persistence_table = 'jakarta.persistence.Table'
-    jpa_auditing = 'org.springframework.data.jpa.domain.support.AuditingEntityListener'
+
     serializable = 'java.io.Serializable'
+
+    jpa_auditing = 'org.springframework.data.jpa.domain.support.AuditingEntityListener'
+    jpa_query_factory = 'com.querydsl.jpa.impl.JPAQueryFactory'
 
     def __init__(self, **kwargs):
         self.xml_path = kwargs['xml_path']
-        self.mapper_path = kwargs['mapper_path']
-        self.model_path = kwargs['model_path']
-        self.base_domain_package = kwargs['base_domain_package']
+        self.repository_path = kwargs['repository_path']
+        self.entity_path = kwargs['entity_path']
+        self.base_entity_package = kwargs['base_entity_package']
         self.enum_package = kwargs['enum_package']
-        self.domain_package = kwargs['domain_package']
-        self.mapper_package = kwargs['mapper_package']
-        self.core_domain_package = kwargs['core_domain_package']
-        self.core_mapper_package = kwargs['core_mapper_package']
+        self.entity_package = kwargs['entity_package']
+        self.repository_package = kwargs['repository_package']
+        self.core_entity_package = kwargs['core_entity_package']
+        self.core_repository_package = kwargs['core_repository_package']
 
 
 # @dataclass
@@ -110,6 +117,7 @@ class Table:
         self.sequence = None  # kwargs['pk']
         self.kwargs = kwargs
         self.primary_keys = list(filter(lambda f: f.is_pk == True, fields))
+        self.id_java_type = self.get_id_java_type()
 
     def is_multiple_key(self):
         return len(self.primary_keys) != 0
@@ -120,15 +128,6 @@ class Table:
                 return True
         return False
 
-    def get_mapper_name(self):
-        return common.to_class_name(self.table_name) + "Mapper.java"
-
-    def get_model_name(self):
-        return common.to_class_name(self.table_name) + ".java"
-
-    def get_xml_name(self):
-        return common.to_class_name(self.table_name) + ".xml"
-
     def get_table_alias(self, table_name):
         x = table_name.split("_")
         alias = ""
@@ -136,6 +135,14 @@ class Table:
             alias += t[0].upper()
         return alias
 
+    def get_id_java_type(self):
+        if self.is_multiple_key():
+            return common.to_class_name(self.table_name)+"IDCore"
+        else:
+            if self.primary_keys[0] == None:
+                return None
+            else:
+                return self.primary_keys[0].java_type
 
 class FieldAttr:
     def __init__(self, **kwargs):
@@ -469,7 +476,7 @@ def write_file_core(path, file_name, data):
         f.write(data)
 
 
-def generate_mybatis(gen_targets, table_name, category, mapper_package, model_package, field_attrs={}):
+def generate_mybatis(gen_targets, table_name, category, repository_package, entity_package, field_attrs={}):
     global gen_xml
 
     table_name = table_name.lower()
@@ -484,33 +491,35 @@ def generate_mybatis(gen_targets, table_name, category, mapper_package, model_pa
     tns = table.table_namespace
     class_name = common.to_class_name(table_name)
 
-    is_make_model = config.__GEN_TARGET__[0] in gen_targets
-    is_make_mapper = config.__GEN_TARGET__[1] in gen_targets
-    is_make_xml = config.__GEN_TARGET__[2] in gen_targets
+    is_make_entity = config.__GEN_TARGET__[0] in gen_targets
+    is_make_repository = config.__GEN_TARGET__[1] in gen_targets
 
     # Results ...
-    if len(gen_targets) == 0 or is_make_model:
-        in_model_src = gen_model.make_java_domain_core(_column_info, _package_path_info, table, db_fields, _package_path_info.core_domain_package)
-        ex_model_src = gen_model.make_java_domain_ex(_column_info, _package_path_info, table, db_fields, mapper_package, model_package)
+    if len(gen_targets) == 0 or is_make_entity:
+        in_entity_src = gen_model.make_java_domain_core(_column_info, _package_path_info, table, db_fields, _package_path_info.core_entity_package)
+        ex_entity_src = gen_model.make_java_domain_ex(_column_info, _package_path_info, table, db_fields, repository_package, entity_package)
 
-        write_file_core(_package_path_info.model_path, class_name + "Core.java", in_model_src)
-        write_file('domain', category, class_name + ".java", ex_model_src)
+        write_file_core(_package_path_info.entity_path, class_name + "Core.java", in_entity_src)
+        write_file('entity', category, class_name + ".java", ex_entity_src)
 
-        in_model_src = gen_model.make_java_domain_core(_column_info, _package_path_info, table, db_fields, _package_path_info.core_domain_package, True)
-        write_file_core(_package_path_info.model_path, class_name + "CoreID.java", in_model_src)
+        if table.is_multiple_key():
+            in_entity_id_src = gen_model.make_java_domain_core(_column_info, _package_path_info, table, db_fields, _package_path_info.core_entity_package, True)
+            write_file_core(_package_path_info.entity_path, class_name + "IDCore.java", in_entity_id_src)
 
-    if len(gen_targets) == 0 or is_make_mapper:
-        gen_mapper_src = gen_mapper.make_mapper_core(_column_info, _package_path_info, table, db_fields, mapper_package, model_package)
-        mapper_src = gen_mapper.make_mapper_ex(_column_info, _package_path_info, table, db_fields, mapper_package, model_package)
+    if len(gen_targets) == 0 or is_make_repository:
+        in_querydsl_interface_src = gen_repository.make_querydsl_repository_interface_core(_column_info, _package_path_info, table, db_fields, repository_package, entity_package)
+        # in_querydsl_impl_src = gen_repository.make_querydsl_repository_impl_core(_column_info, _package_path_info, table, db_fields, repository_package, entity_package)
 
-        write_file_core(_package_path_info.mapper_path, class_name + "MapperCore.java", gen_mapper_src)
-        write_file('mapper', category, class_name + "Mapper.java", mapper_src)
 
-    if len(gen_targets) == 0 or is_make_xml:
-        in_xml_src = gen_xml.make_xml_core(_column_info, _package_path_info, table, db_fields)
-        ex_xml_src = gen_xml.make_xml_ex(_column_info, _package_path_info, table, db_fields, mapper_package, model_package)
+        ex_interface_src = gen_repository.make_repository_interface_ex(_column_info, _package_path_info, table, db_fields, repository_package, entity_package)
+        ex_querydsl_interface_src = gen_repository.make_querydsl_repository_interface_ex(_column_info, _package_path_info, table, db_fields, repository_package, entity_package)
+        ex_querydsl_impl_src = gen_repository.make_querydsl_repository_impl_ex(_column_info, _package_path_info, table, db_fields, repository_package, entity_package)
 
-        write_file_core(_package_path_info.xml_path, tns.upper() + ".xml", in_xml_src)
-        write_file('xml', category, class_name + "Mapper.xml", ex_xml_src)
+        write_file_core(_package_path_info.repository_path, class_name + "QDSLRepositoryCore.java", in_querydsl_interface_src)
+        # write_file_core(_package_path_info.repository_path, class_name + "QDSLRepositoryCoreImpl.java", in_querydsl_impl_src)
+        write_file('repository', category, class_name + "Repository.java", ex_interface_src)
+        write_file('repository', category, class_name + "QDSLRepository.java", ex_querydsl_interface_src)
+        write_file('repository', category, class_name + "QDSLRepositoryImpl.java", ex_querydsl_impl_src)
+
 
     print("Generated : {}".format(table_name))

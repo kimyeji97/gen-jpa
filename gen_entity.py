@@ -17,7 +17,7 @@ def make_java_domain_core(_c_info, _p_info, table, fields, model_gen_package, is
 
     # 중복 제어해야함
     source_prefix = [
-        common.make_import_code(_package_path_info.base_domain_package)
+        common.make_import_code(_package_path_info.base_entity_package)
         , common.make_import_code(_package_path_info.jakarta_persistence_all)
         , common.make_import_code(_package_path_info.lombok_data)
         , common.make_import_code(_package_path_info.lombok_extend_hashcode)
@@ -30,15 +30,15 @@ def make_java_domain_core(_c_info, _p_info, table, fields, model_gen_package, is
     ]
 
     source = [
-        "@IdClass({}ID.class)".format(table_class_name)
+        "@IdClass({}.class)".format(table.id_java_type)
     ] if (not is_entity_id) and table.is_multiple_key() else []
 
     if not is_entity_id:
         source += [
             "@Data"
-            , "@MappedSuperclass"  # 부모 엔티티를 따르기 위함
+            , "@MappedSuperclass" # 부모 엔티티를 따르기 위함
             , "@EqualsAndHashCode(callSuper = true)"
-            , "@EntityListeners(value = { AuditingEntityListener.class })"  # 엔티티 영속성 탐지
+            , "@EntityListeners(value = { AuditingEntityListener.class })" # 엔티티 영속성 탐지
             , "public class {} extends BaseDomain".format(table_class_name)
             , "{"
         ]
@@ -47,7 +47,7 @@ def make_java_domain_core(_c_info, _p_info, table, fields, model_gen_package, is
             "@Data"
             , "@NoArgsConstructor"
             , "@AllArgsConstructor"
-            , "public class {}ID implements Serializable".format(table_class_name)
+            , "public class {} implements Serializable".format(table.id_java_type)
             , "{"
         ]
 
@@ -158,7 +158,7 @@ def make_java_domain_core(_c_info, _p_info, table, fields, model_gen_package, is
 
 
 # Model 생성
-def make_java_domain_ex(_c_info, _p_info, table, fields, mapper_package, model_package):
+def make_java_domain_ex(_c_info, _p_info, table, fields, repository_package, model_package):
     global _column_info
     global _package_path_info
     _column_info = _c_info
@@ -169,7 +169,7 @@ def make_java_domain_ex(_c_info, _p_info, table, fields, mapper_package, model_p
     table_class_name = common.to_class_name(tname)
 
     source_prefix = [
-        common.make_import_code(_package_path_info.core_domain_package + "." + core_table_class_name)
+        common.make_import_code(_package_path_info.core_entity_package + "." + core_table_class_name)
         , common.make_import_code(_package_path_info.jakarta_persistence_entity)
         , common.make_import_code(_package_path_info.jakarta_persistence_table)
         , common.make_import_code(_package_path_info.lombok_builder)

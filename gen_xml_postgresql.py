@@ -404,7 +404,7 @@ def make_xml_core(_c_info, _p_info, table, fields):
            , tname_alias=tname_alias)
 
 
-def make_xml_ex(_c_info, _p_info, table, fields, mapper_package, model_package):
+def make_xml_ex(_c_info, _p_info, table, fields, repository_package, model_package):
     global _column_info
     global _package_path_info
     _column_info = _c_info
@@ -431,7 +431,7 @@ def make_xml_ex(_c_info, _p_info, table, fields, mapper_package, model_package):
 
     return """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="{mapper_package}.{table_class_name}Mapper">
+<mapper namespace="{repository_package}.{table_class_name}Mapper">
 
     <sql id="selectSql">
         <include refid="{table_ns}.selectFromSql" />
@@ -506,7 +506,7 @@ def make_xml_ex(_c_info, _p_info, table, fields, mapper_package, model_package):
     -->
 </mapper>
 
-""".format(mapper_package=mapper_package
+""".format(repository_package=repository_package
            , model_package=model_package
            , table_ns=table_ns
            , table_class_name=table_class_name
