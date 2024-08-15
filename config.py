@@ -10,7 +10,7 @@ import sys, os
 
 __IS_VERSION_3__ = sys.version_info.major == 3
 __IS_WINDOW__ = os.name == 'Windows' or os.name == 'nt'
-__GEN_TARGET__ = ['entity', 'repository']
+__GEN_TARGET__ = ['entity', 'repository', 'enum']
 __TEMP_DIR__ = 'C:\\Temp\generator' if __IS_WINDOW__ else os.path.join(os.path.expanduser("~"), "Temp", "generator")
 
 _SP4 = ' ' * 4
@@ -57,6 +57,8 @@ CMP_DB_CONNECTIONS_OPTS = [
 
 # 디비 스키마
 DB_SCHEMA = "public"
+
+
 
 ######################################################################################
 # Enum <-> Columns 매핑

@@ -67,14 +67,14 @@ def generate_mybatis_files():
         repository_package = repository_base_pkg + "." + category
         entity_package = entity_base_pkg + "." + category
 
-        gen.generate_mybatis(gen_targets, 'test_demo', category, repository_package, entity_package)
+        gen.generate_jpa_files(gen_targets, 'test_demo', category, repository_package, entity_package)
 
     category = 'report'
     if len(category_targets) == 0 or category in category_targets:
         repository_package = repository_base_pkg + "." + category
         entity_package = entity_base_pkg + "." + category
 
-        gen.generate_mybatis(gen_targets, 'adgroup_report', category, repository_package, entity_package)
+        gen.generate_jpa_files(gen_targets, 'adgroup_report', category, repository_package, entity_package)
 
 
     category = 'ad'
@@ -82,9 +82,9 @@ def generate_mybatis_files():
         repository_package = repository_base_pkg + "." + category
         entity_package = entity_base_pkg + "." + category
 
-        gen.generate_mybatis(gen_targets, 'ad_info', category, repository_package, entity_package)
-        gen.generate_mybatis(gen_targets, 'adgroup_info', category, repository_package, entity_package)
-        gen.generate_mybatis(gen_targets, 'campaign_info', category, repository_package, entity_package)
+        gen.generate_jpa_files(gen_targets, 'ad_info', category, repository_package, entity_package)
+        gen.generate_jpa_files(gen_targets, 'adgroup_info', category, repository_package, entity_package)
+        gen.generate_jpa_files(gen_targets, 'campaign_info', category, repository_package, entity_package)
 
 
 gen.set_base_info(_package_path_info, _column_info)

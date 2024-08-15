@@ -468,7 +468,7 @@ def write_file_core(path, file_name, data):
         f.write(data)
 
 
-def generate_mybatis(gen_targets, table_name, category, repository_package, entity_package, field_attrs={}):
+def generate_jpa_files(gen_targets, table_name, category, repository_package, entity_package, field_attrs={}):
     global gen_xml
 
     table_name = table_name.lower()

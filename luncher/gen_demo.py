@@ -5,7 +5,7 @@ import sys, os
 
 sys.path.append(os.path.abspath("../"))
 
-import gen_jpa as gen
+import gen as gen
 
 arguments = sys.argv
 gen_targets = []
@@ -26,11 +26,11 @@ _package_path_info = gen.PackagePathInfo(
       repository_path='/Users/yjkim/project_sources/web-platform-init/src/main/java/com/yjkim/web/platform/init/framework/core/gen/repository'
     , entity_path='/Users/yjkim/project_sources/web-platform-init/src/main/java/com/yjkim/web/platform/init/framework/core/gen/entity'
     , base_entity_package='com.yjkim.web.platform.init.framework.domain.BaseDomain'
-    , enum_package='com.yjkim.web.platform.init.framework.data.PlatformCodes'
+    , enum_package='com.yjkim.web.platform.init.framework.core.data.PlatformCodes'
     , entity_package='com.yjkim.web.platform.init.framework.domain.entity'
     , repository_package='com.yjkim.web.platform.init.framework.repository'
-    , core_entity_package='com.yjkim.web.platform.init.framework.gen.entity'
-    , core_repository_package='com.yjkim.web.platform.init.framework.gen.repository'
+    , core_entity_package='com.yjkim.web.platform.init.framework.core.gen.entity'
+    , core_repository_package='com.yjkim.web.platform.init.framework.core.gen.repository'
 )
 
 _column_info = gen.ColumnInfo(
@@ -67,7 +67,7 @@ def generate_mybatis_files():
         mapper_package = mapper_base_pkg + "." + category
         model_package = model_base_pkg + "." + category
 
-        gen.generate_mybatis(gen_targets, 'tb_sample', category, mapper_package, model_package)
+        gen.generate_jpa_files(gen_targets, 'tb_sample', category, mapper_package, model_package)
 
 
 
