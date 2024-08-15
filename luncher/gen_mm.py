@@ -23,15 +23,14 @@ print("Generator target category(package) : ", 'ALL' if len(category_targets) ==
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 _package_path_info = gen.PackagePathInfo(
-    xml_path='/Users/yjkim/project_source/_mm/MetaMarket/src/main/resources/mapper/gen'
-    , mapper_path='/Users/yjkim/project_source/_mm/MetaMarket/src/main/java/com/techlabs/platform/metamarketing/framework/core/gen/repository'
-    , model_path='/Users/yjkim/project_source/_mm/MetaMarket/src/main/java/com/techlabs/platform/metamarketing/framework/core/gen/entity'
-    , base_domain_package='com.techlabs.platform.metamarketing.framework.domain.BaseDomain'
+    repository_path='/Users/yjkim/project_source/_mm/MetaMarket/src/main/java/com/techlabs/platform/metamarketing/framework/core/gen/repository'
+    , entity_path='/Users/yjkim/project_source/_mm/MetaMarket/src/main/java/com/techlabs/platform/metamarketing/framework/core/gen/entity'
+    , base_entity_package='com.techlabs.platform.metamarketing.framework.domain.BaseDomain'
     , enum_package='com.techlabs.platform.metamarketing.framework.core.data.PlatformCodes'
-    , domain_package='com.techlabs.platform.metamarketing.framework.domain.entity'
-    , mapper_package='com.techlabs.platform.metamarketing.framework.domain.repository'
-    , core_domain_package='com.techlabs.platform.metamarketing.framework.core.gen.entity'
-    , core_mapper_package='com.techlabs.platform.metamarketing.framework.core.gen.repository'
+    , entity_package='com.techlabs.platform.metamarketing.framework.domain.entity'
+    , repository_package='com.techlabs.platform.metamarketing.framework.domain.repository'
+    , core_entity_package='com.techlabs.platform.metamarketing.framework.core.gen.entity'
+    , core_repository_package='com.techlabs.platform.metamarketing.framework.core.gen.repository'
 )
 
 _column_info = gen.ColumnInfo(
@@ -47,7 +46,7 @@ _column_info = gen.ColumnInfo(
 
 
 
-# gen.generate_mybatis(gen_targets,'테이블명', category, mapper_package, model_package, {
+# gen.generate_mybatis(gen_targets,'테이블명', category, repository_package, entity_package, {
 #     'pk': '시퀀스명'
 #     , '필드명': {
 #         'field_name': ''
@@ -58,34 +57,34 @@ _column_info = gen.ColumnInfo(
 # })
 def generate_mybatis_files():
     #########################################
-    mapper_base_pkg = _package_path_info.mapper_package
-    model_base_pkg = _package_path_info.domain_package
+    repository_base_pkg = _package_path_info.repository_package
+    entity_base_pkg = _package_path_info.entity_package
     #########################################
 
 
     category = 'test'
     if len(category_targets) == 0 or category in category_targets:
-        mapper_package = mapper_base_pkg + "." + category
-        model_package = model_base_pkg + "." + category
+        repository_package = repository_base_pkg + "." + category
+        entity_package = entity_base_pkg + "." + category
 
-        gen.generate_mybatis(gen_targets, 'test_demo', category, mapper_package, model_package)
+        gen.generate_mybatis(gen_targets, 'test_demo', category, repository_package, entity_package)
 
     category = 'report'
     if len(category_targets) == 0 or category in category_targets:
-        mapper_package = mapper_base_pkg + "." + category
-        model_package = model_base_pkg + "." + category
+        repository_package = repository_base_pkg + "." + category
+        entity_package = entity_base_pkg + "." + category
 
-        gen.generate_mybatis(gen_targets, 'adgroup_report', category, mapper_package, model_package)
+        gen.generate_mybatis(gen_targets, 'adgroup_report', category, repository_package, entity_package)
 
 
     category = 'ad'
     if len(category_targets) == 0 or category in category_targets:
-        mapper_package = mapper_base_pkg + "." + category
-        model_package = model_base_pkg + "." + category
+        repository_package = repository_base_pkg + "." + category
+        entity_package = entity_base_pkg + "." + category
 
-        gen.generate_mybatis(gen_targets, 'ad_info', category, mapper_package, model_package)
-        gen.generate_mybatis(gen_targets, 'adgroup_info', category, mapper_package, model_package)
-        gen.generate_mybatis(gen_targets, 'campaign_info', category, mapper_package, model_package)
+        gen.generate_mybatis(gen_targets, 'ad_info', category, repository_package, entity_package)
+        gen.generate_mybatis(gen_targets, 'adgroup_info', category, repository_package, entity_package)
+        gen.generate_mybatis(gen_targets, 'campaign_info', category, repository_package, entity_package)
 
 
 gen.set_base_info(_package_path_info, _column_info)

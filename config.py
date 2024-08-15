@@ -27,11 +27,11 @@ DB_ENGIN = ['postgresql', 'mysql']
 DB_CONNECTION_OPTS = {
     'engin': DB_ENGIN[1]
     , 'options': {
-        'host': 'metamarketing-instance-1.cnzcxy7quzcs.ap-northeast-2.rds.amazonaws.com'
+        'host': 'localhost'
         , 'port': 3306
-        , 'database': 'metamarket'
-        , 'user': 'adopadmin'
-        , 'password': 'Adop*^14'
+        , 'database': 'demo'
+        , 'user': 'root'
+        , 'password': 'qhdks@00'
     }
 }
 

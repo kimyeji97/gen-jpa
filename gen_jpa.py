@@ -5,8 +5,6 @@ import os, json
 import datetime
 import config as config
 import common as common
-import gen_xml_postgresql as gen_postgresql_xml
-import gen_xml_mysql as gen_mysql_xml
 import gen_entity as gen_model
 import gen_repository as gen_repository
 import mysql.connector as mysql
@@ -15,7 +13,6 @@ import psycopg2
 from dataclasses import dataclass
 
 tmpfolder = datetime.datetime.strftime(datetime.datetime.now(), "%Y%m%d.%H%M%S")
-gen_xml = gen_postgresql_xml
 
 
 # @dataclass
@@ -45,7 +42,6 @@ class PackagePathInfo:
     jpa_query_factory = 'com.querydsl.jpa.impl.JPAQueryFactory'
 
     def __init__(self, **kwargs):
-        self.xml_path = kwargs['xml_path']
         self.repository_path = kwargs['repository_path']
         self.entity_path = kwargs['entity_path']
         self.base_entity_package = kwargs['base_entity_package']
@@ -117,7 +113,8 @@ class Table:
         self.sequence = None  # kwargs['pk']
         self.kwargs = kwargs
         self.primary_keys = list(filter(lambda f: f.is_pk == True, fields))
-        self.id_java_type = self.get_id_java_type()
+        self.primary_keys_java_type = self.get_primary_keys_java_type()
+        self.delete_column = list(filter(lambda f: _column_info.include_delete_columns(f.name), fields))
 
     def is_multiple_key(self):
         return len(self.primary_keys) != 0
@@ -135,7 +132,7 @@ class Table:
             alias += t[0].upper()
         return alias
 
-    def get_id_java_type(self):
+    def get_primary_keys_java_type(self):
         if self.is_multiple_key():
             return common.to_class_name(self.table_name)+"IDCore"
         else:
@@ -173,7 +170,7 @@ class TableField:
         self.java_type = self._mk_java_type()
         self.java_field_name = self._mk_java_field_name()
         self.jackson_prop = self._mk_jackson_prop()
-        self.null_check_string = self._mk_null_check_string()
+        self.null_check_string = self._mk_null_check_string("param")
         # YJ 시퀀스 작업
         self.sequence_name = self._mk_sequence_name()
 
@@ -274,16 +271,18 @@ class TableField:
                 return 'String'
             # return 'String'
 
-    def _mk_null_check_string(self):
-        javaField = self.java_field_name
+    def _mk_null_check_string(self, value):
+        getter = common.to_getter(value, self)
         if self.java_type == 'String':
-            return ["{} != null and {}.length() > 0".format(javaField, javaField)]
+            return ["{} != null && {}.length() > 0".format(getter, getter)]
         elif self.is_date() or self.is_datetime() or self.is_datetime3() or self.is_time():
-            return ["{} != null".format(javaField),
-                    "{}{} != null and {}{} != null".format(javaField, _column_info.period_search_start_postfix, javaField,
-                                                           _column_info.period_search_end_postfix)]
+            return ["{} != null".format(getter),
+                    "{} != null && {} != null".format(
+                        getter.replace("()",_column_info.period_search_start_postfix + "()"),
+                        getter.replace("()",_column_info.period_search_end_postfix + "()")
+                    )]
         else:
-            return ["{} != null".format(javaField)]
+            return ["{} != null".format(getter)]
 
     def _mk_jackson_prop(self):
         json_props = {}
@@ -335,8 +334,6 @@ def get_tables(connection_opts, con_schema):
 
     # postgresql
     if (connection_opts.engin == config.DB_ENGIN[0]):
-        gen_xml = gen_postgresql_xml
-
         cnx = psycopg2.connect(**connection_opts)
         cursor = cnx.cursor()
         cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='" + con_schema + "'", False)
@@ -349,8 +346,6 @@ def get_tables(connection_opts, con_schema):
 
     # mysql
     elif (connection_opts.engin == config.DB_ENGIN[1]):
-        gen_xml = gen_mysql_xml
-
         cnx = (mysql.connect(**connection_opts['options']))
         cursor = cnx.cursor()
         cursor.execute('show tables', False)
@@ -374,7 +369,6 @@ def get_field_info(table_name, connection_opts, con_schema, field_attrs={}):
     # print('DB Connection Options              : ', connection_opts)
     if connection_opts['engin'] == config.DB_ENGIN[0]:
 
-        gen_xml = gen_postgresql_xml
         cnx = psycopg2.connect(**connection_opts['options'])
         cursor = cnx.cursor()
         # cursor.execute('desc %(table_name)s',{'table_name':table_name},False)
@@ -421,8 +415,6 @@ def get_field_info(table_name, connection_opts, con_schema, field_attrs={}):
         cursor.close()
         cnx.close()
     elif connection_opts['engin'] == config.DB_ENGIN[1]:
-
-        gen_xml = gen_mysql_xml
 
         cnx = (mysql.connect(**connection_opts['options']))
         cursor = cnx.cursor()
@@ -508,7 +500,7 @@ def generate_mybatis(gen_targets, table_name, category, repository_package, enti
 
     if len(gen_targets) == 0 or is_make_repository:
         in_querydsl_interface_src = gen_repository.make_querydsl_repository_interface_core(_column_info, _package_path_info, table, db_fields, repository_package, entity_package)
-        # in_querydsl_impl_src = gen_repository.make_querydsl_repository_impl_core(_column_info, _package_path_info, table, db_fields, repository_package, entity_package)
+        in_querydsl_impl_src = gen_repository.make_querydsl_repository_impl_core(_column_info, _package_path_info, table, db_fields, repository_package, entity_package)
 
 
         ex_interface_src = gen_repository.make_repository_interface_ex(_column_info, _package_path_info, table, db_fields, repository_package, entity_package)
@@ -516,7 +508,7 @@ def generate_mybatis(gen_targets, table_name, category, repository_package, enti
         ex_querydsl_impl_src = gen_repository.make_querydsl_repository_impl_ex(_column_info, _package_path_info, table, db_fields, repository_package, entity_package)
 
         write_file_core(_package_path_info.repository_path, class_name + "QDSLRepositoryCore.java", in_querydsl_interface_src)
-        # write_file_core(_package_path_info.repository_path, class_name + "QDSLRepositoryCoreImpl.java", in_querydsl_impl_src)
+        write_file_core(_package_path_info.repository_path, class_name + "QDSLRepositoryCoreImpl.java", in_querydsl_impl_src)
         write_file('repository', category, class_name + "Repository.java", ex_interface_src)
         write_file('repository', category, class_name + "QDSLRepository.java", ex_querydsl_interface_src)
         write_file('repository', category, class_name + "QDSLRepositoryImpl.java", ex_querydsl_impl_src)

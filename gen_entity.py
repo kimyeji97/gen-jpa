@@ -30,7 +30,7 @@ def make_java_domain_core(_c_info, _p_info, table, fields, model_gen_package, is
     ]
 
     source = [
-        "@IdClass({}.class)".format(table.id_java_type)
+        "@IdClass({}.class)".format(table.primary_keys_java_type)
     ] if (not is_entity_id) and table.is_multiple_key() else []
 
     if not is_entity_id:
@@ -47,7 +47,7 @@ def make_java_domain_core(_c_info, _p_info, table, fields, model_gen_package, is
             "@Data"
             , "@NoArgsConstructor"
             , "@AllArgsConstructor"
-            , "public class {} implements Serializable".format(table.id_java_type)
+            , "public class {} implements Serializable".format(table.primary_keys_java_type)
             , "{"
         ]
 

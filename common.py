@@ -18,6 +18,9 @@ def bool_str(boo):
 def to_lower(s):
     return s.lower()
 
+def to_getter(value, field):
+    return "{}.get{}()".format(value, field.java_field_name[0].upper() + field.java_field_name[1:] )
+
 def to_field_name(value):
     value = value.replace("tb_", "", 1)
     value = value.replace("TB_", "", 1)
