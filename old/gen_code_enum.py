@@ -305,7 +305,7 @@ template = """
         public static final Long pcode = {pcode}L;
         public static final String pname = "{pname}";
         private Long code;
-        private String value;
+        private String name;
         private String dispValue;
         
         private {ename}(Long c , String v, String dv) {{

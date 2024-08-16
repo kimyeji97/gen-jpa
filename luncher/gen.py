@@ -5,6 +5,7 @@ import sys, os
 
 sys.path.append(os.path.abspath("../"))
 
+import gen_code_enum as gen_code
 import gen_jpa as gen
 import config
 
@@ -23,10 +24,12 @@ for gt in arguments[1:]:
 print("Generator target file              : ", 'ALL' if len(gen_targets) == 0 else gen_targets)
 print("Generator target category(package) : ", 'ALL' if len(category_targets) == 0 else category_targets)
 
+src_path = '/Users/yjkim/project_source/_mm/MetaMarket/src/main/java/'
 _package_path_info = gen.PackagePathInfo(
-    core_repository_path='/Users/yjkim/project_source/_mm/MetaMarket/src/main/java/com/techlabs/platform/metamarketing/framework/core/gen/repository'
-    , core_entity_path='/Users/yjkim/project_source/_mm/MetaMarket/src/main/java/com/techlabs/platform/metamarketing/framework/core/gen/entity'
-    , core_entity_id_path='/Users/yjkim/project_source/_mm/MetaMarket/src/main/java/com/techlabs/platform/metamarketing/framework/core/gen/id'
+    project_src_path=src_path
+    , core_repository_path=src_path + 'com/techlabs/platform/metamarketing/framework/core/gen/repository'
+    , core_entity_path=src_path + 'com/techlabs/platform/metamarketing/framework/core/gen/entity'
+    , core_entity_id_path=src_path + 'com/techlabs/platform/metamarketing/framework/core/gen/id'
     , base_entity_package='com.techlabs.platform.metamarketing.framework.domain.BaseDomain'
     , enum_package='com.techlabs.platform.metamarketing.framework.core.data.PlatformCodes'
     , entity_package='com.techlabs.platform.metamarketing.framework.domain.entity'
@@ -34,8 +37,8 @@ _package_path_info = gen.PackagePathInfo(
     , core_entity_package='com.techlabs.platform.metamarketing.framework.core.gen.entity'
     , core_entity_id_package='com.techlabs.platform.metamarketing.framework.core.gen.id'
     , core_repository_package='com.techlabs.platform.metamarketing.framework.core.gen.repository'
+    , core_converter_package='com.techlabs.platform.metamarketing.framework.core.gen.converter'
 )
-
 _column_info = gen.ColumnInfo(
     is_remove_cd=False
     , is_remove_yn=False
@@ -47,6 +50,7 @@ _column_info = gen.ColumnInfo(
     , delete_columns=['is_deleted']
 )
 gen.set_base_info(_package_path_info, _column_info)
+
 
 # gen.generate_mybatis(gen_targets,'테이블명', category, repository_package, entity_package, {
 #     'pk': '시퀀스명'
@@ -86,10 +90,22 @@ def generate_jpa_files():
         gen.generate_jpa_files(gen_targets, 'adgroup_info', category, repository_package, entity_package)
         gen.generate_jpa_files(gen_targets, 'campaign_info', category, repository_package, entity_package)
 
-print("\r\n============================================")
-print("Generate Start..!!")
-print("---------------------------------------------")
-generate_jpa_files()
-print("---------------------------------------------")
-print("Generate Finish..!!")
-print("============================================")
+
+if len(gen_targets) < 1 or 'entity' in gen_targets or 'reposiroty' in gen_targets:
+    print("\r\n============================================")
+    print("Generate JPA Start..!!")
+    print("---------------------------------------------")
+    generate_jpa_files()
+    print("---------------------------------------------")
+    print("Generate JPA Finish..!!")
+    print("============================================")
+
+if len(category_targets) < 1 and (len(gen_targets) < 1 or 'code' in gen_targets):
+    print("\r\n============================================")
+    print("Generate Code Start..!!")
+    print("---------------------------------------------")
+    gen_code.gen_code_enum(_package_path_info)
+    gen_code.gen_code_handler(_package_path_info)
+    print("---------------------------------------------")
+    print("Generate Code Finish..!!")
+    print("============================================")

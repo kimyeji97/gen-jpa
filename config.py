@@ -32,7 +32,7 @@ __HELP__ = """
     command: python3 ./gen.py {options}
     options:
         -h, --help
-        -T{target}      entity, repository, enum
+        -T{target}      entity, repository, code
                         Only the entered target will be created. 
         -C{category}    Categories defined in generate_jpa_files()
                         Only the entered categories will be created.
@@ -50,11 +50,11 @@ DB_ENGIN = ['postgresql', 'mysql']
 DB_CONNECTION_OPTS = {
     'engin': DB_ENGIN[1]
     , 'options': {
-        'host': 'localhost'
+        'host': 'metamarketing-instance-1.cnzcxy7quzcs.ap-northeast-2.rds.amazonaws.com'
         , 'port': 3306
-        , 'database': 'demo'
-        , 'user': 'root'
-        , 'password': 'qhdks@00'
+        , 'database': 'metamarket'
+        , 'user': 'adopadmin'
+        , 'password': 'Adop*^14'
     }
 }
 
@@ -86,6 +86,7 @@ DB_SCHEMA = "public"
 ######################################################################################
 # Enum <-> Columns 매핑
 ######################################################################################
+
 # enum_name = interface_package
 ENUM_TYPE_INTERFACE_PACKAGE = {}
 

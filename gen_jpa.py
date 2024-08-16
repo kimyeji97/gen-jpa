@@ -41,6 +41,7 @@ class PackagePathInfo:
     jpa_auditing = 'org.springframework.data.jpa.domain.support.AuditingEntityListener'
     jpa_query_factory = 'com.querydsl.jpa.impl.JPAQueryFactory'
 
+
     def __init__(self, **kwargs):
         self.core_repository_path = kwargs['core_repository_path']
         self.core_entity_path = kwargs['core_entity_path']
@@ -52,6 +53,8 @@ class PackagePathInfo:
         self.core_entity_package = kwargs['core_entity_package']
         self.core_entity_id_package = kwargs['core_entity_id_package']
         self.core_repository_package = kwargs['core_repository_package']
+        self.project_src_path = kwargs['project_src_path']
+        self.core_converter_package = kwargs['core_converter_package']
 
 
 # @dataclass
