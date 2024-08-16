@@ -17,6 +17,29 @@ _SP4 = ' ' * 4
 _SP8 = ' ' * 8
 _SP12 = ' ' * 12
 
+__FILE_ANNOTATION__ = """
+/**
+ * [TABLE] {}
+ * <pre>
+ *    This is an automatically generated file.
+ *    This file is automatically overwritten by the generator, so it is recommended not to edit it.
+ * </pre>
+ * @author Kim Yeji
+ */"""
+
+
+__HELP__ = """
+    command: python3 ./gen.py {options}
+    options:
+        -h, --help
+        -T{target}      entity, repository, enum
+                        Only the entered target will be created. 
+        -C{category}    Categories defined in generate_jpa_files()
+                        Only the entered categories will be created.
+        
+    if no options are entered, all will be generated.
+"""
+
 ######################################################################################
 # 디비 접속 정보
 ######################################################################################

@@ -42,13 +42,15 @@ class PackagePathInfo:
     jpa_query_factory = 'com.querydsl.jpa.impl.JPAQueryFactory'
 
     def __init__(self, **kwargs):
-        self.repository_path = kwargs['repository_path']
-        self.entity_path = kwargs['entity_path']
+        self.core_repository_path = kwargs['core_repository_path']
+        self.core_entity_path = kwargs['core_entity_path']
+        self.core_entity_id_path = kwargs['core_entity_id_path']
         self.base_entity_package = kwargs['base_entity_package']
         self.enum_package = kwargs['enum_package']
         self.entity_package = kwargs['entity_package']
         self.repository_package = kwargs['repository_package']
         self.core_entity_package = kwargs['core_entity_package']
+        self.core_entity_id_package = kwargs['core_entity_id_package']
         self.core_repository_package = kwargs['core_repository_package']
 
 
@@ -107,13 +109,25 @@ _column_info: ColumnInfo = None
 class Table:
     def __init__(self, tname, fields, **kwargs):
         self.table_name = tname
-        self.table_alias = self.get_table_alias(tname)
-        self.table_namespace = 'TNS_' + tname.upper()
         self.fields = fields
         self.sequence = None  # kwargs['pk']
         self.kwargs = kwargs
+
+        self.table_alias = self.get_table_alias(self.table_name)
+        self.table_entity_name = common.to_class_name(self.table_name)
+        self.table_entity_core_name = self.table_entity_name + 'Core'  # TableCore
+        self.table_entity_id_core_name = self.table_entity_name + 'IdCore'  # TableIdCore
+        self.table_repository_interface_name = self.table_entity_name + 'Repository'  # TableRepository
+        self.table_qdsl_repository_interface_name = self.table_entity_name + 'QdslRepository'  # TableQdslRepository
+        self.table_qdsl_repository_impl_name = self.table_qdsl_repository_interface_name + 'Impl'  # TableQdslRepositoryImpl
+        self.table_qdsl_repository_core_interface_name = self.table_qdsl_repository_interface_name + 'Core'  # TableQdslRepositoryCore
+        self.table_qdsl_repository_core_impl_name = self.table_qdsl_repository_core_interface_name + 'Impl'  # TableQdslRepositoryCoreImpl
+
+        self.table_field_name = common.to_field_name(self.table_name)  # table
+        self.table_qclass_name = 'Q' + self.table_entity_name  # QTable
+
         self.primary_keys = list(filter(lambda f: f.is_pk == True, fields))
-        self.primary_keys_java_type = self.get_primary_keys_java_type()
+        self.primary_keys_java_type = self._get_primary_keys_java_type()
         self.delete_column = list(filter(lambda f: _column_info.include_delete_columns(f.name), fields))
 
     def is_multiple_key(self):
@@ -132,14 +146,15 @@ class Table:
             alias += t[0].upper()
         return alias
 
-    def get_primary_keys_java_type(self):
+    def _get_primary_keys_java_type(self):
         if self.is_multiple_key():
-            return common.to_class_name(self.table_name)+"IDCore"
+            return self.table_entity_id_core_name
         else:
             if self.primary_keys[0] == None:
                 return None
             else:
                 return self.primary_keys[0].java_type
+
 
 class FieldAttr:
     def __init__(self, **kwargs):
@@ -152,7 +167,6 @@ class FieldAttr:
 
 class TableField:
     def __init__(self, **kwargs):
-        print (kwargs)
         self.field_attrs = kwargs['field_attrs']
         self.name = kwargs['field']
         self.is_pk = kwargs['key'] == 'PRI'
@@ -274,15 +288,15 @@ class TableField:
     def _mk_null_check_string(self, value):
         getter = common.to_getter(value, self)
         if self.java_type == 'String':
-            return ["{} != null && {}.length() > 0".format(getter, getter)]
+            return ["!Objects.isNull({}) && !{}.isEmpty()".format(getter, getter)]
         elif self.is_date() or self.is_datetime() or self.is_datetime3() or self.is_time():
-            return ["{} != null".format(getter),
-                    "{} != null && {} != null".format(
-                        getter.replace("()",_column_info.period_search_start_postfix + "()"),
-                        getter.replace("()",_column_info.period_search_end_postfix + "()")
+            return ["!Objects.isNull({})".format(getter),
+                    "!Objects.isNull({}) && !Objects.isNull({})".format(
+                        getter.replace("()", _column_info.period_search_start_postfix + "()"),
+                        getter.replace("()", _column_info.period_search_end_postfix + "()")
                     )]
         else:
-            return ["{} != null".format(getter)]
+            return ["!Objects.isNull({})".format(getter)]
 
     def _mk_jackson_prop(self):
         json_props = {}
@@ -367,6 +381,8 @@ def get_field_info(table_name, connection_opts, con_schema, field_attrs={}):
 
     # print('DB Connection Started.. (Get table schema info)')
     # print('DB Connection Options              : ', connection_opts)
+
+    # Postgresql
     if connection_opts['engin'] == config.DB_ENGIN[0]:
 
         cnx = psycopg2.connect(**connection_opts['options'])
@@ -414,6 +430,8 @@ def get_field_info(table_name, connection_opts, con_schema, field_attrs={}):
             rows.append(field)
         cursor.close()
         cnx.close()
+
+    # Mysql
     elif connection_opts['engin'] == config.DB_ENGIN[1]:
 
         cnx = (mysql.connect(**connection_opts['options']))
@@ -437,7 +455,6 @@ def get_field_info(table_name, connection_opts, con_schema, field_attrs={}):
             map_row['field_attrs'] = field_attrs
             field = TableField(**map_row)
             rows.append(field)
-            # print(json.dumps(field.__dict__))
         cursor.close()
         cnx.close()
         pass
@@ -448,13 +465,12 @@ def get_field_info(table_name, connection_opts, con_schema, field_attrs={}):
 
 def write_file(category, group, file_name, data):
     global tmpfolder
-
-    if category == None or len(category) == 0:
-        tmpdir_all = os.path.join(config.__TEMP_DIR__, 'mybatis-gen-' + tmpfolder)
-        tmpdir = os.path.join(config.__TEMP_DIR__, 'mybatis-gen-' + tmpfolder, group)
+    if category is None or len(category) == 0:
+        tmpdir_all = os.path.join(config.__TEMP_DIR__, 'jpa-gen-' + tmpfolder)
+        tmpdir = os.path.join(config.__TEMP_DIR__, 'jpa-gen-' + tmpfolder, group)
     else:
-        tmpdir_all = os.path.join(config.__TEMP_DIR__, 'mybatis-gen-' + tmpfolder, category)
-        tmpdir = os.path.join(config.__TEMP_DIR__, 'mybatis-gen-' + tmpfolder, category, group)
+        tmpdir_all = os.path.join(config.__TEMP_DIR__, 'jpa-gen-' + tmpfolder, category)
+        tmpdir = os.path.join(config.__TEMP_DIR__, 'jpa-gen-' + tmpfolder, category, group)
 
     if not os.path.exists(tmpdir):
         os.makedirs(tmpdir)
@@ -480,38 +496,35 @@ def generate_jpa_files(gen_targets, table_name, category, repository_package, en
 
     table = Table(table_name, db_fields, pk=field_attrs.get('pk'))
 
-    tns = table.table_namespace
-    class_name = common.to_class_name(table_name)
 
     is_make_entity = config.__GEN_TARGET__[0] in gen_targets
     is_make_repository = config.__GEN_TARGET__[1] in gen_targets
 
     # Results ...
     if len(gen_targets) == 0 or is_make_entity:
-        in_entity_src = gen_model.make_java_domain_core(_column_info, _package_path_info, table, db_fields, _package_path_info.core_entity_package)
-        ex_entity_src = gen_model.make_java_domain_ex(_column_info, _package_path_info, table, db_fields, repository_package, entity_package)
+        in_entity_src = gen_model.make_java_entity_core(_column_info, _package_path_info, table, db_fields, _package_path_info.core_entity_package)
+        ex_entity_src = gen_model.make_java_entity_ex(_column_info, _package_path_info, table, db_fields, repository_package, entity_package)
 
-        write_file_core(_package_path_info.entity_path, class_name + "Core.java", in_entity_src)
-        write_file('entity', category, class_name + ".java", ex_entity_src)
+        write_file_core(_package_path_info.core_entity_path, table.table_entity_core_name + '.java', in_entity_src)
+        write_file('entity', category, table.table_entity_name + '.java', ex_entity_src)
 
         if table.is_multiple_key():
-            in_entity_id_src = gen_model.make_java_domain_core(_column_info, _package_path_info, table, db_fields, _package_path_info.core_entity_package, True)
-            write_file_core(_package_path_info.entity_path, class_name + "IDCore.java", in_entity_id_src)
+            in_entity_id_src = gen_model.make_java_entity_core(_column_info, _package_path_info, table, db_fields, _package_path_info.core_entity_id_package, True)
+
+            write_file_core(_package_path_info.core_entity_id_path, table.table_entity_id_core_name + '.java', in_entity_id_src)
 
     if len(gen_targets) == 0 or is_make_repository:
-        in_querydsl_interface_src = gen_repository.make_querydsl_repository_interface_core(_column_info, _package_path_info, table, db_fields, repository_package, entity_package)
-        in_querydsl_impl_src = gen_repository.make_querydsl_repository_impl_core(_column_info, _package_path_info, table, db_fields, repository_package, entity_package)
+        in_querydsl_interface_src = gen_repository.make_querydsl_repository_interface_core(_column_info, _package_path_info, table, db_fields,repository_package, entity_package)
+        in_querydsl_impl_src = gen_repository.make_querydsl_repository_impl_core(_column_info, _package_path_info, table, db_fields,repository_package, entity_package)
 
+        ex_interface_src = gen_repository.make_repository_interface_ex(_column_info, _package_path_info, table, db_fields, repository_package,entity_package)
+        ex_querydsl_interface_src = gen_repository.make_querydsl_repository_interface_ex(_column_info, _package_path_info, table, db_fields,repository_package, entity_package)
+        ex_querydsl_impl_src = gen_repository.make_querydsl_repository_impl_ex(_column_info, _package_path_info, table, db_fields, repository_package,entity_package)
 
-        ex_interface_src = gen_repository.make_repository_interface_ex(_column_info, _package_path_info, table, db_fields, repository_package, entity_package)
-        ex_querydsl_interface_src = gen_repository.make_querydsl_repository_interface_ex(_column_info, _package_path_info, table, db_fields, repository_package, entity_package)
-        ex_querydsl_impl_src = gen_repository.make_querydsl_repository_impl_ex(_column_info, _package_path_info, table, db_fields, repository_package, entity_package)
-
-        write_file_core(_package_path_info.repository_path, class_name + "QDSLRepositoryCore.java", in_querydsl_interface_src)
-        write_file_core(_package_path_info.repository_path, class_name + "QDSLRepositoryCoreImpl.java", in_querydsl_impl_src)
-        write_file('repository', category, class_name + "Repository.java", ex_interface_src)
-        write_file('repository', category, class_name + "QDSLRepository.java", ex_querydsl_interface_src)
-        write_file('repository', category, class_name + "QDSLRepositoryImpl.java", ex_querydsl_impl_src)
-
+        write_file_core(_package_path_info.core_repository_path, table.table_qdsl_repository_core_interface_name + ".java", in_querydsl_interface_src)
+        write_file_core(_package_path_info.core_repository_path, table.table_qdsl_repository_core_impl_name + ".java", in_querydsl_impl_src)
+        write_file('repository', category, table.table_repository_interface_name + ".java", ex_interface_src)
+        write_file('repository', category, table.table_qdsl_repository_interface_name + ".java", ex_querydsl_interface_src)
+        write_file('repository', category, table.table_qdsl_repository_impl_name + ".java", ex_querydsl_impl_src)
 
     print("Generated : {}".format(table_name))

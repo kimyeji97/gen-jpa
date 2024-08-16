@@ -4,27 +4,21 @@
 import common as common
 import config as config
 
-_column_info = None
-_package_path_info = None
 
-
-def make_repository_interface_ex(_c_info, _p_info, table, fields, repository_package, entity_package):
-    global _column_info
-    global _package_path_info
-    _column_info = _c_info
-    _package_path_info = _p_info
-
+# Repository Interface 생성
+def make_repository_interface_ex(_column_info, _package_path_info, table, fields, repository_package, entity_package):
+    class_name = table.table_repository_interface_name
     repository = """package %(repository_package)s;
 
 %(import_id)s
-import %(core_repository_package)s.%(table_class_name)sQDSLRepositoryCore;
+import %(core_repository_package)s.%(qdsl_core_class_name)s;
 import %(entity_package)s.%(table_class_name)s;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.querydsl.QuerydslPredicateExecutor;
 import org.springframework.stereotype.Repository;
 
 @Repository 
-public interface %(table_class_name)sRepository extends JpaRepository<%(table_class_name)s, %(id_type)s>, QuerydslPredicateExecutor<%(table_class_name)s>, %(table_class_name)sQDSLRepositoryCore, %(table_class_name)sQDSLRepository 
+public interface %(class_name)s extends JpaRepository<%(table_class_name)s, %(id_type)s>, QuerydslPredicateExecutor<%(table_class_name)s>, %(qdsl_core_class_name)s, %(qdsl_class_name)s 
 {
 
 }"""
@@ -32,48 +26,45 @@ public interface %(table_class_name)sRepository extends JpaRepository<%(table_cl
         'repository_package': repository_package
         , 'core_repository_package': _package_path_info.core_repository_package
         , 'entity_package': entity_package
-        , 'table_class_name': common.to_class_name(table.table_name)
+        , 'table_class_name': table.table_entity_name
+        , 'class_name': class_name
+        , 'qdsl_core_class_name': table.table_qdsl_repository_core_interface_name
+        , 'qdsl_class_name': table.table_qdsl_repository_interface_name
         , 'id_type': table.primary_keys_java_type
         ,
         'import_id': common.make_import_code(
-            "{}.{}".format(_package_path_info.core_entity_package, table.primary_keys_java_type))
+            "{}.{}".format(_package_path_info.core_entity_id_package, table.primary_keys_java_type))
     }
 
 
-def make_querydsl_repository_interface_ex(_c_info, _p_info, table, fields, repository_package, entity_package):
-    global _column_info
-    global _package_path_info
-    _column_info = _c_info
-    _package_path_info = _p_info
-
+# QdslRepository Interface 생성
+def make_querydsl_repository_interface_ex(_column_info, _package_path_info, table, fields, repository_package, entity_package):
+    class_name = table.table_qdsl_repository_interface_name
     repository = """package %(repository_package)s;
 
-public interface %(table_class_name)sQDSLRepository {
+public interface %(table_class_name)s {
 
 }
 """
     return repository % {
         'repository_package': repository_package
-        , 'table_class_name': common.to_class_name(table.table_name)
+        , 'table_class_name': class_name
     }
 
 
-def make_querydsl_repository_impl_ex(_c_info, _p_info, table, fields, repository_package, entity_package):
-    global _column_info
-    global _package_path_info
-    _column_info = _c_info
-    _package_path_info = _p_info
-
+# QdslRepositoryImpl 생성
+def make_querydsl_repository_impl_ex(_column_info, _package_path_info, table, fields, repository_package, entity_package):
+    class_name = table.table_qdsl_repository_impl_name
     repository = """package %(repository_package)s;
 
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import %(core_repository_package)s.%(table_class_name)sQDSLRepositoryCoreImpl;
+import %(core_repository_package)s.%(qdsl_core_impl_class_name)s;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
-public class %(table_class_name)sQDSLRepositoryImpl implements %(table_class_name)sQDSLRepository {
+public class %(class_name)s implements %(qdsl_class_name)s {
     private final JPAQueryFactory queryFactory;
-    private final %(table_class_name)sQDSLRepositoryCoreImpl qdslRepository;
+    private final %(qdsl_core_impl_class_name)s qdslRepository;
     
     
 }
@@ -81,17 +72,17 @@ public class %(table_class_name)sQDSLRepositoryImpl implements %(table_class_nam
     return repository % {
         'repository_package': repository_package
         , 'core_repository_package': _package_path_info.core_repository_package
-        , 'table_class_name': common.to_class_name(table.table_name)
+        , 'class_name': class_name
+        , 'qdsl_class_name': table.table_qdsl_repository_interface_name
+        , 'qdsl_core_impl_class_name': table.table_qdsl_repository_core_impl_name
     }
 
 
-def make_querydsl_repository_interface_core(_c_info, _p_info, table, fields, repository_package, entity_package):
-    global _column_info
-    global _package_path_info
-    _column_info = _c_info
-    _package_path_info = _p_info
+# QdslRepositoryCore Interface 생성
+def make_querydsl_repository_interface_core(_column_info, _package_path_info, table, fields, repository_package, entity_package):
+    class_name = table.table_qdsl_repository_core_interface_name
 
-    key_params = make_pk_params(fields)
+    key_params = make_pk_params(_column_info, fields)
     repository = """package %(repository_package)s;
 
 %(import_id)s
@@ -103,7 +94,8 @@ import org.springframework.data.domain.Pageable;
 import java.util.List;
 %(key_params_import)s
 
-public interface %(table_class_name)sQDSLRepositoryCore {
+%(annotation)s
+public interface %(class_name)s {
     /**
      * 조건에 해당하는 목록 페이징 조회
      */
@@ -144,20 +136,20 @@ public interface %(table_class_name)sQDSLRepositoryCore {
         'repository_package': _package_path_info.core_repository_package
         , 'table_class_name': common.to_class_name(table.table_name)
         , 'id_type': table.primary_keys_java_type
-        ,
-        'import_id': common.make_import_code(
-            "{}.{}".format(_package_path_info.core_entity_package, table.primary_keys_java_type))
+        , 'import_id': common.make_import_code("{}.{}".format(_package_path_info.core_entity_id_package, table.primary_keys_java_type))
         , 'key_params': key_params['params_str']
         , 'key_params_import': key_params['import_str']
         , 'entity_package': entity_package
+        , 'class_name': class_name
+        , 'annotation': config.__FILE_ANNOTATION__.format(table.table_name)
     }
 
 
+# QdslRepositoryCoreImpl#getKeySelectFrom 메소드 생성
 def make_method_pk_select(table):
-    tfield = common.to_field_name(table.table_name)
     pk_qclass_columns = []
     for pk in table.primary_keys:
-        pk_qclass_columns.append("{}.{}".format(tfield, pk.java_field_name))
+        pk_qclass_columns.append("{}.{}".format(table.table_field_name, pk.java_field_name))
 
     return """public JPAQuery<%(primary_keys_java_type)s> getKeySelectFrom() 
     {
@@ -168,14 +160,13 @@ def make_method_pk_select(table):
 """ % {
         'primary_keys_java_type': table.primary_keys_java_type
         , 'pk_qclass_columns': ", ".join(pk_qclass_columns)
-        , 'table_field_name': tfield
+        , 'table_field_name': table.table_field_name
     }
 
 
-def make_method_columns_where(table, fields):
-    tfield = common.to_field_name(table.table_name)
-
-    javaFieldList = ['uri', 'host', 'method']
+# QdslRepositoryCoreImpl#getWhereBuilder 메소드의 본문 생성
+def make_method_columns_where(_column_info, table, fields):
+    like_field_list = ['uri', 'host', 'method']
     columns_where = []
     postfix_columns_where = []
     for field in fields:
@@ -187,7 +178,7 @@ def make_method_columns_where(table, fields):
         java_field = field.java_field_name
         null_check_string = field.null_check_string
         oper = 'eq({})'
-        if (java_field in javaFieldList) or common.endswith_ignore_case(f, "NM", "NAME"):
+        if (java_field in like_field_list) or common.endswith_ignore_case(f, "NM", "NAME"):
             oper = 'likeIgnoreCase({})'
 
         # 일반 컬럼
@@ -196,7 +187,7 @@ def make_method_columns_where(table, fields):
             builder.and(%(qclass_name)s.%(field_namd)s.%(oper)s);            
         }""" % {
             'null_check_string': null_check_string[0]
-            , 'qclass_name': tfield
+            , 'qclass_name': table.table_field_name
             , 'field_namd': java_field
             , 'oper': oper.format(getter)
         }
@@ -209,7 +200,7 @@ def make_method_columns_where(table, fields):
             builder.and(%(qclass_name)s.%(field_namd)s.between(%(start_field)s, %(end_field)s));            
         }""" % {
                 'null_check_string': null_check_string[1]
-                , 'qclass_name': tfield
+                , 'qclass_name': table.table_field_name
                 , 'field_namd': java_field
                 , 'start_field': getter.replace("()", _column_info.period_search_start_postfix + "()")
                 , 'end_field': getter.replace("()", _column_info.period_search_end_postfix + "()")
@@ -224,18 +215,17 @@ def make_method_columns_where(table, fields):
     }"""
 
     return method % {
-        'table_class': common.to_class_name(table.table_name)
+        'table_class': table.table_entity_name
         , 'columns_where': ("\n" + config._SP8).join(columns_where + postfix_columns_where)
     }
 
 
-def make_method_pk_where(table, fields):
+# QdslRepositoryCoreImpl#getWhereBuilderByKey 메소드 생성
+def make_method_pk_where(table, fields, pk_params):
     columns_where = []
     for pk in table.primary_keys:
-        columns_where.append(
-            ".and({}.{}.eq({}))".format(common.to_field_name(table.table_name), pk.java_field_name, pk.java_field_name))
+        columns_where.append(".and({}.{}.eq({}))".format(table.table_field_name, pk.java_field_name, pk.java_field_name))
 
-    pk_params = make_pk_params(fields)
     method = """public BooleanBuilder getWhereBuilderByKey(%(params)s) 
     {
         return new BooleanBuilder()
@@ -248,18 +238,17 @@ def make_method_pk_where(table, fields):
     }
 
 
+# QdslRepositoryCoreImpl#getWhereBuilderByKeyList 메소드 생성
 def make_method_pk_in_where(table):
-    t_field_name = common.to_field_name(table.table_name)
+    t_field_name = table.table_field_name
 
     pk_columns_where = None
     for pk in table.primary_keys:
-        if pk_columns_where == None:
+        if pk_columns_where is None:
             pk_columns_where = '{}.{}.eq({})'.format(t_field_name, pk.java_field_name, common.to_getter("key", pk))
         else:
-            pk_columns_where += '\r\n' + config._SP12 + config._SP12 + '.and({}.{}.eq({}))'.format(t_field_name,
-                                                                                                   pk.java_field_name,
-                                                                                                   common.to_getter(
-                                                                                                       "key", pk))
+            pk_columns_where += ('\r\n' + config._SP12 + config._SP12 + '.and({}.{}.eq({}))'
+                                 .format(t_field_name, pk.java_field_name, common.to_getter("key", pk)))
 
     method = """public BooleanBuilder getWhereBuilderByKeyList(List<%(primary_keys_java_type)s> keyList) 
     {
@@ -278,30 +267,29 @@ def make_method_pk_in_where(table):
     }
 
 
-def make_method_find(table, fields, type):
-    tname = common.to_class_name(table.table_name)
-    t_field_name = common.to_field_name(table.table_name)
-
+# QdslRepositoryCoreImpl#findxxx 메소드 생성
+def make_method_find(_column_info, table, fields, type):
+    class_name = table.table_entity_name
     where_method_name = 'getWhereBuilder'
-    dml = 'jpaQueryFactory.selectFrom({})'.format(t_field_name)
+    dml = 'jpaQueryFactory.selectFrom({})'.format(table.table_field_name)
     fetch = 'fetch'
     if type == 'AllByWhere':
-        return_type = 'List<{}>'.format(tname)
-        params = '{} param'.format(tname)
+        return_type = 'List<{}>'.format(class_name)
+        params = '{} param'.format(class_name)
         params_values = 'param'
     elif type == 'AllKeyByWhere':
         dml = 'getKeySelectFrom()'
         return_type = 'List<{}>'.format(table.primary_keys_java_type)
-        params = '{} param'.format(tname)
+        params = '{} param'.format(class_name)
         params_values = 'param'
     elif type == 'AllByKeyList':
-        return_type = 'List<{}>'.format(tname)
+        return_type = 'List<{}>'.format(class_name)
         params = 'List<{}> keyList'.format(table.primary_keys_java_type)
         params_values = 'keyList'
         where_method_name = 'getWhereBuilderByKeyList'
     elif type == 'OneByKey':
-        pk_params = make_pk_params(fields)
-        return_type = tname
+        pk_params = make_pk_params(_column_info, fields)
+        return_type = class_name
         params = pk_params['params_str']
         params_values = pk_params['params_value_str']
         where_method_name = 'getWhereBuilderByKey'
@@ -324,6 +312,7 @@ def make_method_find(table, fields, type):
     }
 
 
+# QdslRepositoryCoreImpl#findPageByWhere 메소드 생성
 def make_method_find_page(table):
     method = """@Override
     public Page<%(t_class_name)s> findPageByWhere (%(t_class_name)s param, Pageable pageable, Path sortField)
@@ -342,14 +331,14 @@ def make_method_find_page(table):
         return PageableExecutionUtils.getPage(list, pageable, countQuery::fetchOne);
     }"""
     return method % {
-        't_class_name': common.to_class_name(table.table_name)
-        , 't_field_name': common.to_field_name(table.table_name)
+        't_class_name': table.table_entity_name
+        , 't_field_name': table.table_field_name
     }
 
 
-def make_method_delete_by_id(table, fields, is_list=False):
-    key_params = make_pk_params(fields)
-    t_field_name = common.to_field_name(table.table_name)
+# QdslRepositoryCoreImpl#deletByKeyexxx 메소드 생성
+def make_method_delete_by_id(table, fields, pk_params, is_list=False):
+    t_field_name = table.table_field_name
     if len(table.delete_column) < 1:
         dml = 'jpaQueryFactory.delete({})'.format(t_field_name)
     else:
@@ -366,39 +355,35 @@ def make_method_delete_by_id(table, fields, is_list=False):
     return method % {
         'method_name': 'deleteByKey' if not is_list else 'deleteByKeyList'
         , 'where_method_name': 'getWhereBuilderByKey' if not is_list else 'getWhereBuilderByKeyList'
-        , 'pk_params': key_params['params_str'] if not is_list else "List<{}> keyList".format(
-            table.primary_keys_java_type)
+        , 'pk_params': pk_params['params_str'] if not is_list else "List<{}> keyList".format(table.primary_keys_java_type)
         , 'dml': dml
-        , 'pk_values': key_params['params_value_str'] if not is_list else 'keyList'
+        , 'pk_values': pk_params['params_value_str'] if not is_list else 'keyList'
     }
 
 
-def make_querydsl_repository_impl_core(_c_info, _p_info, table, fields, repository_package, entity_package):
-    global _column_info
-    global _package_path_info
-    _column_info = _c_info
-    _package_path_info = _p_info
+# QdslRepositoryCoreImpl 생성
+def make_querydsl_repository_impl_core(_column_info, _package_path_info, table, fields, repository_package, entity_package):
+    class_name = table.table_qdsl_repository_core_impl_name
+    t_class_name = table.table_entity_name
+    t_field_name = table.table_field_name
 
-    tname = table.table_name
-    t_class_name = common.to_class_name(tname)
-    t_field_name = common.to_field_name(tname)
-
+    pk_params = make_pk_params(_column_info, fields)
     import_src = [
-        common.make_import_code("{}.{}".format(_package_path_info.core_entity_package, table.primary_keys_java_type))
+        common.make_import_code("{}.{}".format(_package_path_info.core_entity_id_package, table.primary_keys_java_type))
         , common.make_import_code("{}.{}".format(entity_package, t_class_name))
     ]
-    import_qclass_src = common.make_import_code('static {}.Q{}.{}'.format(entity_package, t_class_name, t_field_name))
+    import_qclass_src = common.make_import_code('static {}.{}.{}'.format(entity_package, table.table_qclass_name, t_field_name))
     pk_select = make_method_pk_select(table)
-    columns_where = make_method_columns_where(table, fields)
-    pk_where = make_method_pk_where(table, fields)
+    columns_where = make_method_columns_where(_column_info, table, fields)
+    pk_where = make_method_pk_where(table, fields, pk_params)
     pk_in_where = make_method_pk_in_where(table)
     find_page_by_where = make_method_find_page(table)
-    find_all_by_where = make_method_find(table, fields, 'AllByWhere')
-    find_all_by_id_list = make_method_find(table, fields, 'AllByKeyList')
-    find_all_id_by_where = make_method_find(table, fields, 'AllKeyByWhere')
-    find_one_by_id = make_method_find(table, fields, 'OneByKey')
-    delete_by_id = make_method_delete_by_id(table, fields)
-    delete_by_id_list = make_method_delete_by_id(table, fields, True)
+    find_all_by_where = make_method_find(_column_info, table, fields, 'AllByWhere')
+    find_all_by_id_list = make_method_find(_column_info, table, fields, 'AllByKeyList')
+    find_all_id_by_where = make_method_find(_column_info, table, fields, 'AllKeyByWhere')
+    find_one_by_id = make_method_find(_column_info, table, fields, 'OneByKey')
+    delete_by_id = make_method_delete_by_id(table, fields, pk_params)
+    delete_by_id_list = make_method_delete_by_id(table, fields, pk_params, True)
 
     repository = """package %(gen_package)s;
     
@@ -414,12 +399,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.support.PageableExecutionUtils;
 import java.util.List;
+import java.util.Objects;
 %(import_src)s
 
 %(import_qclass_src)s
 
+%(annotation)s
 @RequiredArgsConstructor
-public class %(table_class_name)sQDSLRepositoryCoreImpl implements %(table_class_name)sQDSLRepositoryCore 
+public class %(class_name)s implements %(interface_class_name)s 
 {
     private final JPAQueryFactory jpaQueryFactory;
     
@@ -461,9 +448,9 @@ public class %(table_class_name)sQDSLRepositoryCoreImpl implements %(table_class
 """
     return repository % {
         'gen_package': _package_path_info.core_repository_package
-        , 'import_src': "\r\n".join(import_src)
+        , 'import_src': "\r\n".join(import_src) + '\r\n' + pk_params['import_str']
         , 'import_qclass_src': import_qclass_src
-        , 'table_class_name': common.to_class_name(tname)
+        , 'table_class_name': t_class_name
         , 'pk_select': pk_select
         , 'columns_where': columns_where
         , 'pk_where': pk_where
@@ -475,10 +462,13 @@ public class %(table_class_name)sQDSLRepositoryCoreImpl implements %(table_class
         , 'find_one_by_id': find_one_by_id
         , 'delete_by_id': delete_by_id
         , 'delete_by_id_list': delete_by_id_list
+        , 'class_name': class_name
+        , 'interface_class_name': table.table_qdsl_repository_core_interface_name
+        , 'annotation': config.__FILE_ANNOTATION__.format(table.table_name)
     }
 
 
-def make_pk_params(fields):
+def make_pk_params(_column_info, fields):
     imports = []
     params = []
     values = []
@@ -488,8 +478,7 @@ def make_pk_params(fields):
         field_f_name = field.java_field_name
         if (_column_info.include_insert_dt_columns(f)
                 or _column_info.include_update_dt_columns(f)
-                # or field.is_auto_increment()
-                or field.is_pk == False):
+                or field.is_pk is False):
             continue
 
         params.append("{} {},".format(java_type, field_f_name))
