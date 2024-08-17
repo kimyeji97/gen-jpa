@@ -91,7 +91,7 @@ def generate_jpa_files():
         gen.generate_jpa_files(gen_targets, 'campaign_info', category, repository_package, entity_package)
 
 
-if len(gen_targets) < 1 or 'entity' in gen_targets or 'reposiroty' in gen_targets:
+if len(gen_targets) < 1 or config.__GEN_TARGET__[0] in gen_targets or config.__GEN_TARGET__[1] in gen_targets:
     print("\r\n============================================")
     print("Generate JPA Start..!!")
     print("---------------------------------------------")
@@ -100,7 +100,7 @@ if len(gen_targets) < 1 or 'entity' in gen_targets or 'reposiroty' in gen_target
     print("Generate JPA Finish..!!")
     print("============================================")
 
-if len(category_targets) < 1 and (len(gen_targets) < 1 or 'code' in gen_targets):
+if len(category_targets) < 1 and (len(gen_targets) < 1 or config.__GEN_TARGET__[2] in gen_targets):
     print("\r\n============================================")
     print("Generate Code Start..!!")
     print("---------------------------------------------")

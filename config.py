@@ -10,7 +10,7 @@ import sys, os
 
 __IS_VERSION_3__ = sys.version_info.major == 3
 __IS_WINDOW__ = os.name == 'Windows' or os.name == 'nt'
-__GEN_TARGET__ = ['entity', 'repository', 'enum']
+__GEN_TARGET__ = ['entity', 'repository', 'code']
 __TEMP_DIR__ = 'C:\\Temp\generator' if __IS_WINDOW__ else os.path.join(os.path.expanduser("~"), "Temp", "generator")
 
 _SP4 = ' ' * 4
@@ -50,11 +50,11 @@ DB_ENGIN = ['postgresql', 'mysql']
 DB_CONNECTION_OPTS = {
     'engin': DB_ENGIN[1]
     , 'options': {
-        'host': 'metamarketing-instance-1.cnzcxy7quzcs.ap-northeast-2.rds.amazonaws.com'
+        'host': 'localhost'
         , 'port': 3306
-        , 'database': 'metamarket'
-        , 'user': 'adopadmin'
-        , 'password': 'Adop*^14'
+        , 'database': 'demo'
+        , 'user': 'root'
+        , 'password': 'qhdks@00'
     }
 }
 
