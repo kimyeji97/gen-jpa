@@ -17,9 +17,9 @@ sys.path.append(dir_path)
 def generate_jpa_type_handler(_package_path_info):
     code_class_name = _package_path_info.enum_package.split('.')[-1:][0]
     class_name = code_class_name + 'Converter'
-    src = """package com.techlabs.platform.metamarketing.framework.core.gen.converter;
+    src = """package %(gen_package)s;
 
-import com.techlabs.platform.metamarketing.framework.core.data.PlatformCodes;
+import %(enumpackage)s;
 import jakarta.persistence.AttributeConverter;
 
 import java.util.Arrays;
@@ -52,6 +52,8 @@ public abstract class %(class_name)s<T extends %(code_class_name)s.CommonCode, L
 }""" % {
         'class_name': class_name
         , 'code_class_name': code_class_name
+        , 'gen_package': _package_path_info.core_converter_package
+        , 'enumpackage': _package_path_info.enum_package
     }
 
     path = os.path.join(_package_path_info.project_src_path, _package_path_info.core_converter_package.replace(".", "/"))
@@ -74,15 +76,15 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.util.Objects;
 
 import {enumpackage};
 import {enumpackage}.CommonCode;
 import {enumpackage}.{type_name};
-import com.techlabs.platform.metamarketing.framework.core.data.JacksonConvertor;
 
-@JacksonConvertor
+@Component
 public class {cls_name} extends JsonDeserializer<{type_name}> implements Converter<String,{type_name}>
 {{
     @Override
@@ -149,7 +151,8 @@ public class {cls_name} extends JsonDeserializer<{type_name}> implements Convert
         return convertFromString(source);
     }}
 }}
-""".format(enumpackage=_package_path_info.enum_package, cls_name=de_cls_name, type_name=enum, code_class_name=code_class_name,
+""".format(enumpackage=_package_path_info.enum_package, cls_name=de_cls_name, type_name=enum,
+           code_class_name=code_class_name,
            gen_package=_package_path_info.core_converter_package)
         write_file_core(path, de_cls_name + '.java', deserializer_src)
 
