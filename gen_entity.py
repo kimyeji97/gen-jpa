@@ -15,7 +15,7 @@ def make_java_entity_core(_column_info, _package_path_info, table, fields, model
         , common.make_import_code(_package_path_info.lombok_data)
         , common.make_import_code(_package_path_info.lombok_extend_hashcode)
         , common.make_import_code(_package_path_info.jpa_auditing)
-        , common.make_import_code('{}.{}'.format(_package_path_info.core_entity_id_package, table.primary_keys_java_type))
+        , '' if not table.is_multiple_key() else common.make_import_code('{}.{}'.format(_package_path_info.core_entity_id_package, table.primary_keys_java_type))
     ] if not is_entity_id else [
         common.make_import_code(_package_path_info.lombok_data)
         , common.make_import_code(_package_path_info.lombok_all_args_const)
@@ -63,8 +63,8 @@ def make_java_entity_core(_column_info, _package_path_info, table, fields, model
 
         if not is_entity_id:
 
-            # jpa annotation 추가
-            column_values = []
+            # annotation 추가
+            # 1. @Id + @GeneratedValue
             if field.is_pk:
                 source.append("    @Id")
                 if field.is_auto_increment() and not table.is_multiple_key:
@@ -72,6 +72,10 @@ def make_java_entity_core(_column_info, _package_path_info, table, fields, model
             elif field.is_auto_increment():
                 source.append("    @GeneratedValue(strategy = GenerationType.AUTO)")
 
+            # 2. @Column
+            column_values = [
+                "name = \"" + field.name+"\""
+            ]
             if _column_info.include_update_dt_columns(field.name) or field.is_pk:
                 column_values.append("updatable = false")
             if not field.nullable:
@@ -82,7 +86,7 @@ def make_java_entity_core(_column_info, _package_path_info, table, fields, model
             if len(column_values) > 0:
                 source.append("    @Column({})".format(", ".join(column_values)))
 
-            # JsonProperty 추가
+            # 3. @JsonProperty 추가
             if field.jackson_prop is not None:
                 source_prefix.append(common.make_import_code(_package_path_info.json_property))
 
@@ -97,6 +101,7 @@ def make_java_entity_core(_column_info, _package_path_info, table, fields, model
                 if len(prop_str_list) > 0:
                     source.append('    @JsonProperty({})'.format(','.join(prop_str_list)))
 
+            # 4. @DateTimeFormat + @JsonFormat
             # 날짜 Type 인 경우
             if _column_info.is_use_date_format and field.is_date():
                 source_prefix.append(common.make_import_code(_package_path_info.date_time_format))
@@ -115,6 +120,10 @@ def make_java_entity_core(_column_info, _package_path_info, table, fields, model
                     source.append('    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "' + _column_info.date_time_format_pattern + '")')
                 elif field.is_time():
                     source.append('    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "' + _column_info.time_format_pattern + '")')
+
+            # 5. @Convert
+            if field.is_enum:
+                source.append("    @Convert(converter = {}.Converter.class)".format(field.java_type))
 
         # Field 추가
         source.append("    private {} {};".format(field.java_type, field.java_field_name))
@@ -143,7 +152,7 @@ def make_java_entity_core(_column_info, _package_path_info, table, fields, model
     source.append("}")
     source.insert(0, config.__FILE_ANNOTATION__.format(table.table_name))
 
-    source_prefix = list(set(source_prefix))
+    source_prefix = sorted(list(set(source_prefix)))
     source_prefix.insert(0, common.make_package_code(model_gen_package))
     source_prefix.insert(1, "")
     source_prefix.append("")
@@ -154,7 +163,6 @@ def make_java_entity_core(_column_info, _package_path_info, table, fields, model
 
 # Entity 생성
 def make_java_entity_ex(_column_info, _package_path_info, table, fields, repository_package, model_package):
-
     core_class_name = table.table_entity_core_name
     class_name = table.table_entity_name
 
@@ -182,7 +190,7 @@ def make_java_entity_ex(_column_info, _package_path_info, table, fields, reposit
 
     source.insert(0, config.__FILE_ANNOTATION__.format(table.table_name))
 
-    source_prefix = list(set(source_prefix))
+    source_prefix = sorted(list(set(source_prefix)))
     source_prefix.insert(0, common.make_package_code(model_package))
     source_prefix.insert(1, "")
     source_prefix.append("")

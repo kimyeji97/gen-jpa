@@ -23,7 +23,7 @@ class CodeGroup:
         self.gname = kwargs['name']
         self.gname_disp = "" if kwargs['name'] == "None" else kwargs['name']
         self.gname_disp_eng = "" if kwargs['name_eng'] == "None" else kwargs['name_eng']
-        self.desc = kwargs['description']
+        self.desc = kwargs['descr']
         self.genum_name = kwargs['src_name'].replace(' ', '').replace('-', '').replace('/', '')
         self.value_1 = 'null' if kwargs['value_1'] == "None" else '"'+kwargs['value_1']+'"'
         self.value_2 = 'null' if kwargs['value_2'] == "None" else '"'+kwargs['value_2']+'"'
@@ -42,7 +42,7 @@ class Code:
         self.name = kwargs['name']
         self.name_disp = "" if kwargs['name'] == "None" else kwargs['name']
         self.name_disp_eng = "" if kwargs['name_eng'] == "None" else kwargs['name_eng']
-        self.desc = kwargs['description']
+        self.desc = kwargs['descr']
         self.enum_name = kwargs['src_name'].replace(' ', '').replace('-', '').replace('/', '')
         self.value_1 = 'null' if kwargs['value_1'] == "None" else '"'+ kwargs['value_1']+ '"'
         self.value_2 = 'null' if kwargs['value_2'] == "None" else '"'+ kwargs['value_2']+ '"'
@@ -55,7 +55,7 @@ class Code:
 
 def get_code_groups(connection_opts):
     rows = []
-    sql = 'SELECT * FROM code WHERE pid IS NULL ORDER BY ordr'
+    sql = 'SELECT * FROM code WHERE pid IS NULL ORDER BY ordr, id'
 
     # postgresql
     if connection_opts['engin'] == config.DB_ENGIN[0]:
@@ -111,7 +111,7 @@ def get_code_groups(connection_opts):
 
 
 def get_codes(code_group, connection_opts):
-    sql = "SELECT * FROM code WHERE pid = " + code_group.gcode + " ORDER BY ordr"
+    sql = "SELECT * FROM code WHERE pid = " + code_group.gcode + " ORDER BY ordr, id"
 
     cnx = psycopg2.connect(**connection_opts['options']) if connection_opts['engin'] == config.DB_ENGIN[0] else mysql.connect(
         **connection_opts['options'])
@@ -140,6 +140,7 @@ def get_codes(code_group, connection_opts):
 
 def create_src_string(_package_path_info, add_import, src_contents, class_name):
     src_import = """
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonFormat.Shape;
 """
@@ -152,6 +153,8 @@ import com.fasterxml.jackson.annotation.JsonFormat.Shape;
         }
         Long getCode();
         String getName();
+        @JsonIgnore
+        String[] getValues();
     }
 
 """
@@ -275,14 +278,14 @@ template = """
         @JsonIgnore
         private String[] values;
         
-        private {ename}(Long c , String v, String[] values) {{
+        {ename}(Long c , String v, String[] values) {{
             this.code = c;
             this.name = v;
             this.values = values;
         }}
         
         @jakarta.persistence.Converter(autoApply = true)
-        static class Converter extends PlatformCodesConverter<{ename}, Long> {{
+        public static class Converter extends PlatformCodesConverter<{ename}, Long> {{
             public Converter() {{
                 super({ename}.class);
             }}

@@ -134,7 +134,7 @@ class Table:
         self.delete_column = list(filter(lambda f: _column_info.include_delete_columns(f.name), fields))
 
     def is_multiple_key(self):
-        return len(self.primary_keys) != 0
+        return len(self.primary_keys) > 1
 
     def has_column(self, column_name):
         for field in self.fields:

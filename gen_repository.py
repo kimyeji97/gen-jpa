@@ -32,7 +32,7 @@ public interface %(class_name)s extends JpaRepository<%(table_class_name)s, %(id
         , 'qdsl_class_name': table.table_qdsl_repository_interface_name
         , 'id_type': table.primary_keys_java_type
         ,
-        'import_id': common.make_import_code(
+        'import_id': '' if not table.is_multiple_key()  else  common.make_import_code(
             "{}.{}".format(_package_path_info.core_entity_id_package, table.primary_keys_java_type))
     }
 
@@ -136,7 +136,7 @@ public interface %(class_name)s {
         'repository_package': _package_path_info.core_repository_package
         , 'table_class_name': common.to_class_name(table.table_name)
         , 'id_type': table.primary_keys_java_type
-        , 'import_id': common.make_import_code("{}.{}".format(_package_path_info.core_entity_id_package, table.primary_keys_java_type))
+        , 'import_id': '' if not table.is_multiple_key() else common.make_import_code("{}.{}".format(_package_path_info.core_entity_id_package, table.primary_keys_java_type))
         , 'key_params': key_params['params_str']
         , 'key_params_import': key_params['import_str']
         , 'entity_package': entity_package
@@ -244,11 +244,12 @@ def make_method_pk_in_where(table):
 
     pk_columns_where = None
     for pk in table.primary_keys:
+        getter ='key' if not table.is_multiple_key() else common.to_getter("key", pk)
         if pk_columns_where is None:
-            pk_columns_where = '{}.{}.eq({})'.format(t_field_name, pk.java_field_name, common.to_getter("key", pk))
+            pk_columns_where = '{}.{}.eq({})'.format(t_field_name, pk.java_field_name, getter)
         else:
             pk_columns_where += ('\r\n' + config._SP12 + config._SP12 + '.and({}.{}.eq({}))'
-                                 .format(t_field_name, pk.java_field_name, common.to_getter("key", pk)))
+                                 .format(t_field_name, pk.java_field_name, getter))
 
     method = """public BooleanBuilder getWhereBuilderByKeyList(List<%(primary_keys_java_type)s> keyList) 
     {
@@ -369,7 +370,7 @@ def make_querydsl_repository_impl_core(_column_info, _package_path_info, table, 
 
     pk_params = make_pk_params(_column_info, fields)
     import_src = [
-        common.make_import_code("{}.{}".format(_package_path_info.core_entity_id_package, table.primary_keys_java_type))
+        '' if not table.is_multiple_key() else common.make_import_code("{}.{}".format(_package_path_info.core_entity_id_package, table.primary_keys_java_type))
         , common.make_import_code("{}.{}".format(entity_package, t_class_name))
     ]
     import_qclass_src = common.make_import_code('static {}.{}.{}'.format(entity_package, table.table_qclass_name, t_field_name))
