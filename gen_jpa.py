@@ -260,7 +260,7 @@ class TableField:
             return 'LocalDate'
         elif type_name.startswith("bigint") or type_name.startswith('serial') or type_name.startswith('int8'):
             if self.name in config.FIELD_NAME_ENUM_TYPES:
-                self.java_type_package = _column_info.enum_package + "." + config.FIELD_NAME_ENUM_TYPES[self.name]
+                self.java_type_package = _package_path_info.enum_package + "." + config.FIELD_NAME_ENUM_TYPES[self.name]
                 return config.FIELD_NAME_ENUM_TYPES[self.name]
             else:
                 return 'Long'
@@ -268,7 +268,7 @@ class TableField:
             return 'String'
         elif type_name.startswith("int"):
             if self.name in config.FIELD_NAME_ENUM_TYPES:
-                self.java_type_package = _column_info.enum_package + "." + config.FIELD_NAME_ENUM_TYPES[self.name]
+                self.java_type_package = _package_path_info.enum_package + "." + config.FIELD_NAME_ENUM_TYPES[self.name]
                 return config.FIELD_NAME_ENUM_TYPES[self.name]
             else:
                 return 'Integer'
@@ -288,13 +288,13 @@ class TableField:
         elif type_name.startswith("_int"):
             self.java_type_package = 'java.util.List'
             if self.name in config.FIELD_NAME_ENUM_TYPES:
-                self.java_type_package = _column_info.enum_package + "." + config.FIELD_NAME_ENUM_TYPES[self.name]
+                self.java_type_package = _package_path_info.enum_package + "." + config.FIELD_NAME_ENUM_TYPES[self.name]
                 return "List<{}>".format(config.FIELD_NAME_ENUM_TYPES[self.name])
             else:
                 return 'List<Integer>'
         else:
             if self.name in config.FIELD_NAME_ENUM_TYPES:
-                self.java_type_package = _column_info.enum_package + "." + config.FIELD_NAME_ENUM_TYPES[self.name]
+                self.java_type_package = _package_path_info.enum_package + "." + config.FIELD_NAME_ENUM_TYPES[self.name]
                 return config.FIELD_NAME_ENUM_TYPES[self.name]
             else:
                 return 'String'
