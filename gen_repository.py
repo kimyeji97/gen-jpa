@@ -82,6 +82,17 @@ public class %(class_name)s implements %(qdsl_class_name)s {
 def make_querydsl_repository_interface_core(_column_info, _package_path_info, table, fields, repository_package, entity_package):
     class_name = table.table_qdsl_repository_core_interface_name
 
+    sequence_src = '' if table.sequence is None else """
+    /**
+     * Next 시퀀스 조회
+     */
+    long getNextVal();
+    
+    /**
+     * 시퀀스 세팅
+     */
+    long getSetVal(Long value);"""
+
     key_params = make_pk_params(_column_info, fields)
     repository = """package %(repository_package)s;
 
@@ -130,6 +141,8 @@ public interface %(class_name)s {
      * PK 리스트로 일괄 삭제
      */
     long deleteByKeyList(List<%(id_type)s> keyList);
+    
+%(sequence_src)s
 }
 """
     return repository % {
@@ -142,6 +155,7 @@ public interface %(class_name)s {
         , 'entity_package': entity_package
         , 'class_name': class_name
         , 'annotation': config.__FILE_ANNOTATION__.format(table.table_name)
+        , 'sequence_src': sequence_src
     }
 
 
@@ -362,12 +376,33 @@ def make_method_delete_by_id(table, fields, pk_params, is_list=False):
     }
 
 
+def make_sequence_functions(table):
+    return """
+    @Override
+    public long getNextVal() {
+        return jdbcTemplate.queryForObject("SELECT nextval(?)"
+                , new Object[] { "%(sequnce_name)s" }
+                , Long.class
+        );
+    }
+    
+    @Override
+    public long getSetVal(Long value) {
+        return jdbcTemplate.queryForObject("SELECT setval(?, ?)"
+                , new Object[] { "%(sequnce_name)s" , value }
+                , Long.class
+        );
+    }""" % {
+        'sequnce_name': table.sequence
+    }
+
 # QdslRepositoryCoreImpl 생성
 def make_querydsl_repository_impl_core(_column_info, _package_path_info, table, fields, repository_package, entity_package):
     class_name = table.table_qdsl_repository_core_impl_name
     t_class_name = table.table_entity_name
     t_field_name = table.table_field_name
 
+    jdbc_template_di = ''
     pk_params = make_pk_params(_column_info, fields)
     import_src = [
         '' if not table.is_multiple_key() else common.make_import_code("{}.{}".format(_package_path_info.core_entity_id_package, table.primary_keys_java_type))
@@ -385,6 +420,13 @@ def make_querydsl_repository_impl_core(_column_info, _package_path_info, table, 
     find_one_by_id = make_method_find(_column_info, table, fields, 'OneByKey')
     delete_by_id = make_method_delete_by_id(table, fields, pk_params)
     delete_by_id_list = make_method_delete_by_id(table, fields, pk_params, True)
+    sequence_functions = ''
+
+    print(table.sequence)
+    if table.sequence is not None:
+        import_src.append(common.make_import_code(_package_path_info.jdbc_template))
+        jdbc_template_di = 'private final JdbcTemplate jdbcTemplate;'
+        sequence_functions = make_sequence_functions(table)
 
     repository = """package %(gen_package)s;
     
@@ -410,6 +452,7 @@ import java.util.Objects;
 public class %(class_name)s implements %(interface_class_name)s 
 {
     private final JPAQueryFactory jpaQueryFactory;
+    %(jdbc_template_di)s
     
     /**
      * pk select 문
@@ -445,12 +488,15 @@ public class %(class_name)s implements %(interface_class_name)s
     %(delete_by_id)s
     
     %(delete_by_id_list)s
+    
+    %(sequence_functions)s
 }
 """
     return repository % {
         'gen_package': _package_path_info.core_repository_package
         , 'import_src': "\r\n".join(import_src) + '\r\n' + pk_params['import_str']
         , 'import_qclass_src': import_qclass_src
+        , 'jdbc_template_di': jdbc_template_di
         , 'table_class_name': t_class_name
         , 'pk_select': pk_select
         , 'columns_where': columns_where
@@ -466,6 +512,7 @@ public class %(class_name)s implements %(interface_class_name)s
         , 'class_name': class_name
         , 'interface_class_name': table.table_qdsl_repository_core_interface_name
         , 'annotation': config.__FILE_ANNOTATION__.format(table.table_name)
+        , 'sequence_functions': sequence_functions
     }
 
 

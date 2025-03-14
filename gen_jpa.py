@@ -40,6 +40,7 @@ class PackagePathInfo:
 
     jpa_auditing = 'org.springframework.data.jpa.domain.support.AuditingEntityListener'
     jpa_query_factory = 'com.querydsl.jpa.impl.JPAQueryFactory'
+    jdbc_template = 'org.springframework.jdbc.core.JdbcTemplate'
 
 
     def __init__(self, **kwargs):
@@ -115,7 +116,7 @@ class Table:
     def __init__(self, tname, fields, **kwargs):
         self.table_name = tname
         self.fields = fields
-        self.sequence = None  # kwargs['pk']
+        self.sequence = self._get_sequnce_name(fields)  # kwargs['pk']
         self.kwargs = kwargs
 
         self.table_alias = self.get_table_alias(self.table_name)
@@ -160,6 +161,15 @@ class Table:
             else:
                 return self.primary_keys[0].java_type
 
+    def _get_sequnce_name(self, fields ):
+        if not fields or len(fields) < 0:
+            return None
+
+        sequence_list = list(filter(lambda f: f.sequence_name is not None, fields))
+        if len(sequence_list) < 1:
+            return None
+
+        return sequence_list[0].sequence_name
 
 class FieldAttr:
     def __init__(self, **kwargs):
@@ -190,8 +200,8 @@ class TableField:
         self.java_field_name = self._mk_java_field_name()
         self.jackson_prop = self._mk_jackson_prop()
         self.null_check_string = self._mk_null_check_string("param")
-        # YJ 시퀀스 작업
         self.sequence_name = self._mk_sequence_name()
+        self.is_enum = self.name in config.FIELD_NAME_ENUM_TYPES
 
         if self.default:
             if self.java_type == 'String':
@@ -213,8 +223,8 @@ class TableField:
         return self.extra == 'auto_increment'
 
     def _mk_sequence_name(self):
-        if self.name in self.field_attrs and self.field_attrs[self.name].sequenceName:
-            return self.field_attrs[self.name].sequenceName
+        if self.name in self.field_attrs and 'sequence_name' in self.field_attrs[self.name]:
+            return self.field_attrs[self.name]['sequence_name']
         else:
             return None
 
@@ -223,8 +233,8 @@ class TableField:
             return common.to_field_name(self.name)
         else:
             attrs = self.field_attrs[self.name]
-            if attrs.fieldName:
-                return self.field_attrs.fieldName
+            if 'field_name' in attrs:
+                return self.field_attrs['field_name']
             else:
                 return common.to_field_name(self.name)
 
@@ -232,8 +242,8 @@ class TableField:
         type_name = self.type.lower()
         name = self.name.lower()
 
-        if name in self.field_attrs and self.field_attrs[name].javaType:
-            tmpJavaType = self.field_attrs[name].javaType
+        if name in self.field_attrs and 'java_type' in self.field_attrs[name]:
+            tmpJavaType = self.field_attrs[name]['java_type']
 
             dot_pos = tmpJavaType.rfind('.')
             if dot_pos == -1:
@@ -321,8 +331,8 @@ class TableField:
         if json_prop_name:
             json_props['value'] = json_prop_name
 
-        if self.field_attrs and self.name in self.field_attrs and self.field_attrs[self.name].jsonProperties:
-            jsonProperties = self.field_attrs[self.name].jsonProperties
+        if self.field_attrs and self.name in self.field_attrs and 'json_props' in  self.field_attrs[self.name]:
+            jsonProperties = self.field_attrs[self.name]['json_props']
             for prop_key in jsonProperties:
                 json_props[prop_key] = jsonProperties[prop_key]
 
