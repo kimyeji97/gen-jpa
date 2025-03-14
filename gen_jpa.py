@@ -55,6 +55,8 @@ class PackagePathInfo:
         self.core_repository_package = kwargs['core_repository_package']
         self.project_src_path = kwargs['project_src_path']
         self.core_converter_package = kwargs['core_converter_package']
+        self.core_enum_path = kwargs['core_enum_path']
+        self.core_convertor_path = kwargs['core_convertor_path']
 
 
 # @dataclass
@@ -469,17 +471,17 @@ def get_field_info(table_name, connection_opts, con_schema, field_attrs={}):
 def write_file(category, group, file_name, data):
     global tmpfolder
     if category is None or len(category) == 0:
-        tmpdir_all = os.path.join(config.__TEMP_DIR__, 'jpa-gen-' + tmpfolder)
+        # tmpdir_all = os.path.join(config.__TEMP_DIR__, 'jpa-gen-' + tmpfolder)
         tmpdir = os.path.join(config.__TEMP_DIR__, 'jpa-gen-' + tmpfolder, group)
     else:
-        tmpdir_all = os.path.join(config.__TEMP_DIR__, 'jpa-gen-' + tmpfolder, category)
+        # tmpdir_all = os.path.join(config.__TEMP_DIR__, 'jpa-gen-' + tmpfolder, category)
         tmpdir = os.path.join(config.__TEMP_DIR__, 'jpa-gen-' + tmpfolder, category, group)
 
     if not os.path.exists(tmpdir):
         os.makedirs(tmpdir)
 
     write_file_core(tmpdir, file_name, data)
-    write_file_core(tmpdir_all, file_name, data)
+    # write_file_core(tmpdir_all, file_name, data)
 
 
 def write_file_core(path, file_name, data):

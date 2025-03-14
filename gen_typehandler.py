@@ -56,14 +56,16 @@ public abstract class %(class_name)s<T extends %(code_class_name)s.CommonCode, L
         , 'enumpackage': _package_path_info.enum_package
     }
 
-    path = os.path.join(_package_path_info.project_src_path, _package_path_info.core_converter_package.replace(".", "/"))
+    # path = os.path.join(_package_path_info.project_src_path, _package_path_info.core_converter_package.replace(".", "/"))
+    path = _package_path_info.core_convertor_path
     write_file_core(path, class_name + '.java', src)
 
     print('JPA AttributeConverter have been generated. Copy the sources and paste to source directory.')
 
 
 def generate_jackson_de_and_serializer(_package_path_info, code_groups):
-    path = os.path.join(_package_path_info.project_src_path, _package_path_info.core_converter_package.replace(".", "/"))
+    # path = os.path.join(_package_path_info.project_src_path, _package_path_info.core_converter_package.replace(".", "/"))
+    path = _package_path_info.core_convertor_path
     code_class_name = _package_path_info.enum_package.split('.')[-1:][0]
     for cg in code_groups:
         enum = cg.genum_name

@@ -170,7 +170,7 @@ def make_java_entity_ex(_column_info, _package_path_info, table, fields, reposit
         common.make_import_code(_package_path_info.core_entity_package + "." + core_class_name)
         , common.make_import_code(_package_path_info.jakarta_persistence_entity)
         , common.make_import_code(_package_path_info.jakarta_persistence_table)
-        , common.make_import_code(_package_path_info.lombok_builder)
+        # , common.make_import_code(_package_path_info.lombok_builder)
         , common.make_import_code(_package_path_info.lombok_data)
         , common.make_import_code(_package_path_info.lombok_extend_hashcode)
         , common.make_import_code(_package_path_info.lombok_no_args_const)
@@ -178,7 +178,7 @@ def make_java_entity_ex(_column_info, _package_path_info, table, fields, reposit
 
     source = [
         '@Data'
-        , '@Builder'
+        # , '@Builder'
         , '@Entity'
         , '@NoArgsConstructor'
         , '@Table(name = "{}")'.format(table.table_name)

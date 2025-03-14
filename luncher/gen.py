@@ -24,9 +24,16 @@ for gt in arguments[1:]:
 print("Generator target file              : ", 'ALL' if len(gen_targets) == 0 else gen_targets)
 print("Generator target category(package) : ", 'ALL' if len(category_targets) == 0 else category_targets)
 
+system = 'admin'
 src_path = '/Users/yjkim/project_source/_mm/MetaMarket/src/main/java/'
+_src_sub_path = {
+    'core': 'platform-core/src/main/java/',
+    'base': 'platform-base/'+system+'-base/src/main/java/',
+}
 _package_path_info = gen.PackagePathInfo(
     project_src_path=src_path
+    , core_enum_path=src_path + _src_sub_path['core'] + 'com/techlabs/platform/core/data'
+    , core_convertor_path=src_path + _src_sub_path['core'] + 'com/techlabs/platform/core/gen/converter'
     , core_repository_path=src_path + 'com/techlabs/platform/metamarketing/framework/core/gen/repository'
     , core_entity_path=src_path + 'com/techlabs/platform/metamarketing/framework/core/gen/entity'
     , core_entity_id_path=src_path + 'com/techlabs/platform/metamarketing/framework/core/gen/id'
@@ -49,7 +56,25 @@ _column_info = gen.ColumnInfo(
     , update_dt_columns=['update_dt']
     , delete_columns=['is_deleted']
 )
+_code_info = gen_code.CodeColumnName(
+    code_column='cd_id',
+    pcode_column='cd_pid',
+    name_column='cd_nm',
+    name_disp_column='cd_nm',
+    enum_name_column='cd_value',
+    value_1_column='lang_key',
+    value_2_column='data_list',
+)
+_code_group_info = gen_code.CodeGroupColumnName(
+    gcode_column='cd_id',
+    gname_column='cd_nm',
+    gname_disp_column='cd_nm',
+    genum_name_column='cd_value',
+    value_1_column='lang_key',
+    value_2_column='data_list',
+)
 gen.set_base_info(_package_path_info, _column_info)
+gen_code.set_base_info(_code_info, _code_group_info)
 
 
 # gen.generate_mybatis(gen_targets,'테이블명', category, repository_package, entity_package, {
