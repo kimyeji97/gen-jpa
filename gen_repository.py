@@ -99,6 +99,7 @@ def make_querydsl_repository_interface_core(_column_info, _package_path_info, ta
 %(import_id)s
 import %(entity_package)s.%(table_class_name)s;
 import com.querydsl.core.types.Path;
+import com.querydsl.core.BooleanBuilder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -111,11 +112,13 @@ public interface %(class_name)s {
      * 조건에 해당하는 목록 페이징 조회
      */
     Page<%(table_class_name)s> findPageByWhere(%(table_class_name)s param, Pageable pageable, Path sortField);
+    Page<%(table_class_name)s> findPageByWhere(%(table_class_name)s param, Pageable pageable, Path sortField, BooleanBuilder expendWhere);
     
     /**
      * 조건에 해당하는 목록 조회
      */
     List<%(table_class_name)s> findAllByWhere(%(table_class_name)s param);
+    List<%(table_class_name)s> findAllByWhere(%(table_class_name)s param, BooleanBuilder expendWhere);
     
     /**
      * PK 리스트로 목록 조회 
@@ -126,6 +129,7 @@ public interface %(class_name)s {
      * 조건에 해당하는 PK 목록 조회
      */
     List<%(id_type)s> findAllKeyByWhere(%(table_class_name)s param);
+    List<%(id_type)s> findAllKeyByWhere(%(table_class_name)s param, BooleanBuilder expendWhere);
     
     /**
      * PK로 단건 조회
@@ -154,7 +158,7 @@ public interface %(class_name)s {
         , 'key_params_import': key_params['import_str']
         , 'entity_package': entity_package
         , 'class_name': class_name
-        , 'annotation': config.__FILE_ANNOTATION__.format(table.table_name)
+        , 'annotation': config.__FILE_ANNOTATION__.format("[TABLE] " + table.table_name)
         , 'sequence_src': sequence_src
     }
 
@@ -185,12 +189,22 @@ def make_method_columns_where(_column_info, table, fields):
     postfix_columns_where = []
     for field in fields:
         f = field.name
-        if _column_info.include_update_dt_columns(f) or _column_info.include_insert_dt_columns(f):
-            continue
-
         getter = common.to_getter("param", field)
         java_field = field.java_field_name
         null_check_string = field.null_check_string
+        if _column_info.include_update_dt_columns(f) or _column_info.include_insert_dt_columns(f):
+            postfix_columns_where.append("""if (%(null_check_string)s)
+        {
+            builder.and(%(qclass_name)s.%(field_namd)s.between(%(start_field)s, %(end_field)s));            
+        }""" % {
+                'null_check_string': null_check_string[1]
+                , 'qclass_name': table.table_field_name
+                , 'field_namd': java_field
+                , 'start_field': getter.replace("()", _column_info.period_search_start_postfix + "()")
+                , 'end_field': getter.replace("()", _column_info.period_search_end_postfix + "()")
+            })
+            continue
+
         oper = 'eq({})'
         if (java_field in like_field_list) or common.endswith_ignore_case(f, "NM", "NAME"):
             oper = 'likeIgnoreCase({})'
@@ -221,9 +235,9 @@ def make_method_columns_where(_column_info, table, fields):
             }
             postfix_columns_where.append(columns_if)
 
-    method = """public BooleanBuilder getWhereBuilder(%(table_class)s param) 
+    method = """public BooleanBuilder getWhereBuilder(%(table_class)s param, BooleanBuilder expendWhere) 
     {
-        BooleanBuilder builder = new BooleanBuilder();
+        BooleanBuilder builder = ObjectUtils.defaultIfNull(expendWhere, new BooleanBuilder());
         %(columns_where)s
         return builder;
     }"""
@@ -288,11 +302,14 @@ def make_method_find(_column_info, table, fields, type):
     where_method_name = 'getWhereBuilder'
     dml = 'jpaQueryFactory.selectFrom({})'.format(table.table_field_name)
     fetch = 'fetch'
+    isByKey = True
     if type == 'AllByWhere':
+        isByKey = False
         return_type = 'List<{}>'.format(class_name)
         params = '{} param'.format(class_name)
         params_values = 'param'
     elif type == 'AllKeyByWhere':
+        isByKey = False
         dml = 'getKeySelectFrom()'
         return_type = 'List<{}>'.format(table.primary_keys_java_type)
         params = '{} param'.format(class_name)
@@ -315,6 +332,16 @@ def make_method_find(_column_info, table, fields, type):
         return %(dml)s
                 .where(this.%(where_method_name)s(%(params_values)s))
                 .%(fetch)s();
+    }""" if isByKey else """@Override
+    public %(return_type)s %(method_name)s(%(params)s) {
+        return this.%(method_name)s(%(params_values)s, null);
+    }
+    
+    @Override
+    public %(return_type)s %(method_name)s(%(params)s, BooleanBuilder expendWhere) {
+        return %(dml)s
+                .where(this.%(where_method_name)s(%(params_values)s, expendWhere))
+                .%(fetch)s();
     }"""
     return method % {
         'return_type': return_type
@@ -330,10 +357,16 @@ def make_method_find(_column_info, table, fields, type):
 # QdslRepositoryCoreImpl#findPageByWhere 메소드 생성
 def make_method_find_page(table):
     method = """@Override
-    public Page<%(t_class_name)s> findPageByWhere (%(t_class_name)s param, Pageable pageable, Path sortField)
+    public Page<%(t_class_name)s> findPageByWhere(%(t_class_name)s param , Pageable pageable , Path sortField) 
+    {
+        return this.findPageByWhere(param, pageable, sortField, null);
+    }
+    
+    @Override
+    public Page<%(t_class_name)s> findPageByWhere (%(t_class_name)s param, Pageable pageable, Path sortField , BooleanBuilder expendWhere)
     {
         List<%(t_class_name)s> list = jpaQueryFactory.selectFrom(%(t_field_name)s)
-                .where(this.getWhereBuilder(param))
+                .where(this.getWhereBuilder(param, expendWhere))
                 .orderBy(new OrderSpecifier<>(Order.DESC, sortField))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
@@ -341,7 +374,7 @@ def make_method_find_page(table):
 
         JPAQuery<Long> countQuery = jpaQueryFactory.select(%(t_field_name)s.count())
                 .from(%(t_field_name)s)
-                .where(this.getWhereBuilder(param));
+                .where(this.getWhereBuilder(param, expendWhere));
 
         return PageableExecutionUtils.getPage(list, pageable, countQuery::fetchOne);
     }"""
@@ -422,7 +455,7 @@ def make_querydsl_repository_impl_core(_column_info, _package_path_info, table, 
     delete_by_id_list = make_method_delete_by_id(table, fields, pk_params, True)
     sequence_functions = ''
 
-    print(table.sequence)
+    # print(table.sequence)
     if table.sequence is not None:
         import_src.append(common.make_import_code(_package_path_info.jdbc_template))
         jdbc_template_di = 'private final JdbcTemplate jdbcTemplate;'
@@ -438,6 +471,7 @@ import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.support.PageableExecutionUtils;
@@ -511,7 +545,7 @@ public class %(class_name)s implements %(interface_class_name)s
         , 'delete_by_id_list': delete_by_id_list
         , 'class_name': class_name
         , 'interface_class_name': table.table_qdsl_repository_core_interface_name
-        , 'annotation': config.__FILE_ANNOTATION__.format(table.table_name)
+        , 'annotation': config.__FILE_ANNOTATION__.format("[TABLE] " + table.table_name)
         , 'sequence_functions': sequence_functions
     }
 

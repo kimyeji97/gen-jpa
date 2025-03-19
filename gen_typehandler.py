@@ -5,6 +5,7 @@
 import sys, os
 import datetime
 import common
+import config as config
 
 print("generate the 'Typehandler' with payment code.")
 
@@ -26,7 +27,8 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
 
-public abstract class %(class_name)s<T extends %(code_class_name)s.CommonCode, Long> implements AttributeConverter<T, Long> {
+%(annotation)s
+public abstract class %(class_name)s<T extends %(code_class_name)s.ICommonCode, Long> implements AttributeConverter<T, Long> {
     private final Class<T> clazz;
     
     public PlatformCodesConverter(Class<T> clazz) {
@@ -54,6 +56,7 @@ public abstract class %(class_name)s<T extends %(code_class_name)s.CommonCode, L
         , 'code_class_name': code_class_name
         , 'gen_package': _package_path_info.core_converter_package
         , 'enumpackage': _package_path_info.enum_package
+        , 'annotation': config.__FILE_ANNOTATION__.format('ICommonCode DB Converter')
     }
 
     # path = os.path.join(_package_path_info.project_src_path, _package_path_info.core_converter_package.replace(".", "/"))
@@ -74,7 +77,6 @@ def generate_jackson_de_and_serializer(_package_path_info, code_groups):
         deserializer_src = """package {gen_package};
 
 import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import org.springframework.core.convert.converter.Converter;
@@ -84,19 +86,21 @@ import java.io.IOException;
 import java.util.Objects;
 
 import {enumpackage};
-import {enumpackage}.CommonCode;
+import {enumpackage}.ICommonCode;
 import {enumpackage}.{type_name};
+import {convertor_annotation_package}.PlatformConverter;
 
+{annotation}
 @Component
+@PlatformConverter
 public class {cls_name} extends JsonDeserializer<{type_name}> implements Converter<String,{type_name}>
 {{
     @Override
-    public {type_name} deserialize(JsonParser jp, DeserializationContext ctxt)
-        throws IOException, JsonProcessingException
+    public {type_name} deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException
     {{
         if (jp.isExpectedStartObjectToken())
         {{
-            CommonCode cd = jp.readValueAs(CommonCode.class);
+            ICommonCode cd = jp.readValueAs(ICommonCode.class);
             if (cd == null)
             {{
                 return null;
@@ -156,10 +160,26 @@ public class {cls_name} extends JsonDeserializer<{type_name}> implements Convert
 }}
 """.format(enumpackage=_package_path_info.enum_package, cls_name=de_cls_name, type_name=enum,
            code_class_name=code_class_name,
-           gen_package=_package_path_info.core_converter_package)
+           gen_package=_package_path_info.core_converter_package,
+           convertor_annotation_package=_package_path_info.core_convertor_annotation_package,
+           annotation=config.__FILE_ANNOTATION__.format(enum + ' Body/Query Param Converter')
+           )
         write_file_core(path, de_cls_name + '.java', deserializer_src)
 
     print('Jackson Deserializer have been generated. Copy the sources and paste to source directory.')
+
+
+def generate_platform_converter(_package_path_info):
+    write_file_core(_package_path_info.core_convertor_annotation_path, 'PlatformConverter.java', """package {package};
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+
+{annotation}
+@Retention(RetentionPolicy.RUNTIME)
+public @interface PlatformConverter {{
+}}
+""".format(package=_package_path_info.core_convertor_annotation_package, annotation=config.__FILE_ANNOTATION__.format("Query Param Converter")))
 
 
 def write_file_core(path, file_name, data):

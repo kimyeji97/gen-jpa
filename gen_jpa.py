@@ -58,6 +58,9 @@ class PackagePathInfo:
         self.core_converter_package = kwargs['core_converter_package']
         self.core_enum_path = kwargs['core_enum_path']
         self.core_convertor_path = kwargs['core_convertor_path']
+        self.core_convertor_annotation_path = kwargs['core_convertor_annotation_path']
+        self.core_convertor_annotation_package = kwargs['core_convertor_annotation_package']
+
 
 
 # @dataclass
@@ -182,6 +185,16 @@ class FieldAttr:
 
 class TableField:
     def __init__(self, **kwargs):
+        # field_attrs : {
+        #   column_name : {
+        #        'fieldName': ''
+        #        , 'javaType': ''
+        #        , 'converterType: ''
+        #        , 'jsonProperties': ''
+        #        , 'sequenceName': ''
+        #        , 'enumType': ''
+        #    }
+        # }
         self.field_attrs = kwargs['field_attrs']
         self.name = kwargs['field']
         self.is_pk = kwargs['key'] == 'PRI'
@@ -197,15 +210,32 @@ class TableField:
             self.default = kwargs['default']
         self.java_type_package = None
         self.java_type = self._mk_java_type()
+        self.converter_type = self._mk_converter_type()
+        self.converter_package = self._mk_converter_package()
         self.java_field_name = self._mk_java_field_name()
         self.jackson_prop = self._mk_jackson_prop()
         self.null_check_string = self._mk_null_check_string("param")
         self.sequence_name = self._mk_sequence_name()
         self.is_enum = self.name in config.FIELD_NAME_ENUM_TYPES
+        self.need_converter = self.is_enum or self.name in self.field_attrs and self.field_attrs[self.name] and 'java_type' in self.field_attrs[self.name]
 
         if self.default:
             if self.java_type == 'String':
                 self.default = "'" + self.default + "'"
+
+    def _mk_converter_type(self):
+        if self.name in self.field_attrs and self.field_attrs[self.name] and 'convert_type' in self.field_attrs[self.name]:
+            convertertype = self.field_attrs[self.name]['convert_type'].split(".")[-1]
+            self.converter_package = self.field_attrs[self.name]['convert_type'].replace('.'+convertertype,"")
+            return convertertype
+        else:
+            return self.java_type + ".Converter"
+
+    def _mk_converter_package(self):
+        if self.name in self.field_attrs and self.field_attrs[self.name] and 'convert_type' in self.field_attrs[self.name]:
+            return self.field_attrs[self.name]['convert_type']
+        else:
+            return None
 
     def is_date(self):
         return self.type.startswith("date") and self.type.startswith("datetime") is not True
@@ -259,17 +289,17 @@ class TableField:
             self.java_type_package = 'java.time.LocalDate'
             return 'LocalDate'
         elif type_name.startswith("bigint") or type_name.startswith('serial') or type_name.startswith('int8'):
-            if self.name in config.FIELD_NAME_ENUM_TYPES:
-                self.java_type_package = _package_path_info.enum_package + "." + config.FIELD_NAME_ENUM_TYPES[self.name]
-                return config.FIELD_NAME_ENUM_TYPES[self.name]
+            if name in config.FIELD_NAME_ENUM_TYPES:
+                self.java_type_package = _package_path_info.enum_package + "." + config.FIELD_NAME_ENUM_TYPES[name]
+                return config.FIELD_NAME_ENUM_TYPES[name]
             else:
                 return 'Long'
         elif type_name.startswith("interval"):
             return 'String'
         elif type_name.startswith("int"):
-            if self.name in config.FIELD_NAME_ENUM_TYPES:
-                self.java_type_package = _package_path_info.enum_package + "." + config.FIELD_NAME_ENUM_TYPES[self.name]
-                return config.FIELD_NAME_ENUM_TYPES[self.name]
+            if name in config.FIELD_NAME_ENUM_TYPES:
+                self.java_type_package = _package_path_info.enum_package + "." + config.FIELD_NAME_ENUM_TYPES[name]
+                return config.FIELD_NAME_ENUM_TYPES[name]
             else:
                 return 'Integer'
         elif type_name.startswith("float") or type_name.startswith("double"):
@@ -287,15 +317,15 @@ class TableField:
             return 'List<String>'
         elif type_name.startswith("_int"):
             self.java_type_package = 'java.util.List'
-            if self.name in config.FIELD_NAME_ENUM_TYPES:
-                self.java_type_package = _package_path_info.enum_package + "." + config.FIELD_NAME_ENUM_TYPES[self.name]
-                return "List<{}>".format(config.FIELD_NAME_ENUM_TYPES[self.name])
+            if name in config.FIELD_NAME_ENUM_TYPES:
+                self.java_type_package = _package_path_info.enum_package + "." + config.FIELD_NAME_ENUM_TYPES[name]
+                return "List<{}>".format(config.FIELD_NAME_ENUM_TYPES[name])
             else:
                 return 'List<Integer>'
         else:
-            if self.name in config.FIELD_NAME_ENUM_TYPES:
-                self.java_type_package = _package_path_info.enum_package + "." + config.FIELD_NAME_ENUM_TYPES[self.name]
-                return config.FIELD_NAME_ENUM_TYPES[self.name]
+            if name in config.FIELD_NAME_ENUM_TYPES:
+                self.java_type_package = _package_path_info.enum_package + "." + config.FIELD_NAME_ENUM_TYPES[name]
+                return config.FIELD_NAME_ENUM_TYPES[name]
             else:
                 return 'String'
             # return 'String'

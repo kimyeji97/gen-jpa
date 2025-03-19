@@ -182,13 +182,12 @@ def get_codes(code_group, connection_opts):
 
 def create_src_string(_package_path_info, add_import, src_contents, class_name):
     src_import = """
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonFormat.Shape;
 """
     code_interface = """
     @JsonFormat(shape = Shape.OBJECT)
-    public interface CommonCode
+    public interface ICommonCode
     {
         default Long getPcode() {
             return null;
@@ -223,7 +222,7 @@ public class PlatformCodes
 {{
     {code_interface}
 
-    public static <T extends Enum<T> & CommonCode> T enumByCode(Class<T> type, Long code)
+    public static <T extends Enum<T> & ICommonCode> T enumByCode(Class<T> type, Long code)
     {{
         if (code == null)
         {{
@@ -240,7 +239,7 @@ public class PlatformCodes
         return null;
     }}
 
-    public static <T extends Enum<T> & CommonCode> T enumByName(Class<T> type, String name)
+    public static <T extends Enum<T> & ICommonCode> T enumByName(Class<T> type, String name)
     {{
         if (Objects.isNull(name) || name.isBlank())
         {{
@@ -257,7 +256,7 @@ public class PlatformCodes
         return null;
     }}
 
-    public static <T extends Enum<T> & CommonCode> String nameByCode(Class<T> type, Long code)
+    public static <T extends Enum<T> & ICommonCode> String nameByCode(Class<T> type, Long code)
     {{
         T t = enumByCode(type, code);
         if (t == null)
@@ -267,7 +266,7 @@ public class PlatformCodes
         return t.getName();
     }}
 
-    public static <T extends Enum<T> & CommonCode> Long codeByName(Class<T> type, String name)
+    public static <T extends Enum<T> & ICommonCode> Long codeByName(Class<T> type, String name)
     {{
         T t = enumByName(type, name);
         if (t == null)
@@ -277,7 +276,7 @@ public class PlatformCodes
         return t.getCode();
     }}
 
-    public static <T extends Enum<T> & CommonCode> String enumNamesToString(Class<T> type)
+    public static <T extends Enum<T> & ICommonCode> String enumNamesToString(Class<T> type)
     {{
         StringBuilder sb = new StringBuilder();
         final EnumSet<T> names = EnumSet.allOf(type);
@@ -293,7 +292,7 @@ public class PlatformCodes
     // ###########################################################################
     // Generated Area
     // ###########################################################################
-""".format(import_prefix=import_prefix, code_interface=code_interface, class_name=class_name, annotation=config.__FILE_ANNOTATION__)
+""".format(import_prefix=import_prefix, code_interface=code_interface, class_name=class_name, annotation=config.__FILE_ANNOTATION__.format("Common Codes"))
 
     return src_prefix + src_contents + "}"
 
@@ -307,7 +306,7 @@ def write_file_core(path, class_name, data):
 template = """    
     @Getter
     @JsonDeserialize(using = {cls_name}.class)
-    public enum {ename} implements CommonCode{add_interface}
+    public enum {ename} implements ICommonCode{add_interface}
     {{
 		// @formatter:off
         {fields}
@@ -379,3 +378,4 @@ def gen_code_handler(_package_path_info):
 
     gen_converter.generate_jpa_type_handler(_package_path_info)
     gen_converter.generate_jackson_de_and_serializer(_package_path_info, code_groups)
+    gen_converter.generate_platform_converter(_package_path_info)

@@ -122,8 +122,17 @@ def make_java_entity_core(_column_info, _package_path_info, table, fields, model
                     source.append('    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "' + _column_info.time_format_pattern + '")')
 
             # 5. @Convert
-            if field.is_enum:
-                source.append("    @Convert(converter = {}.Converter.class)".format(field.java_type))
+            if field.need_converter:
+                source.append("    @Convert(converter = {}.class) // Enum".format(field.converter_type))
+                if field.converter_package is not None:
+                    source_prefix.append(common.make_import_code(field.converter_package))
+        else:
+            if field.need_converter:
+                source_prefix.append(common.make_import_code(_package_path_info.jakarta_persistence_all))
+                source.append("    @Column")
+                source.append("    @Convert(converter = {}.class) // 커스텀".format(field.converter_type))
+                if field.converter_package is not None:
+                    source_prefix.append(common.make_import_code(field.converter_package))
 
         # Field 추가
         source.append("    private {} {};".format(field.java_type, field.java_field_name))
@@ -150,7 +159,7 @@ def make_java_entity_core(_column_info, _package_path_info, table, fields, model
 
     source += write_only_source
     source.append("}")
-    source.insert(0, config.__FILE_ANNOTATION__.format(table.table_name))
+    source.insert(0, config.__FILE_ANNOTATION__.format("[TABLE] " + table.table_name))
 
     source_prefix = sorted(list(set(source_prefix)))
     source_prefix.insert(0, common.make_package_code(model_gen_package))
@@ -188,7 +197,7 @@ def make_java_entity_ex(_column_info, _package_path_info, table, fields, reposit
         , "}"
     ]
 
-    source.insert(0, config.__FILE_ANNOTATION__.format(table.table_name))
+    source.insert(0, config.__FILE_ANNOTATION__.format("[TABLE] " + table.table_name))
 
     source_prefix = sorted(list(set(source_prefix)))
     source_prefix.insert(0, common.make_package_code(model_package))

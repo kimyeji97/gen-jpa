@@ -19,7 +19,7 @@ _SP12 = ' ' * 12
 
 __FILE_ANNOTATION__ = """
 /**
- * [TABLE] {}
+ * {}
  * <pre>
  *    This is an automatically generated file.
  *    This file is automatically overwritten by the generator, so it is recommended not to edit it.
@@ -29,7 +29,8 @@ __FILE_ANNOTATION__ = """
 
 
 __HELP__ = """
-    command: python3 ./gen.py {options}
+    command: python3 ./gen.py {system} {options}
+    system: admin or batch or app
     options:
         -h, --help
         -T{target}      entity, repository, code
