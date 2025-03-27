@@ -98,6 +98,8 @@ def make_querydsl_repository_interface_core(_column_info, _package_path_info, ta
 
 %(import_id)s
 import %(entity_package)s.%(table_class_name)s;
+import com.querydsl.core.types.Expression;
+import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.core.types.Path;
 import com.querydsl.core.BooleanBuilder;
 import org.springframework.data.domain.Page;
@@ -108,6 +110,17 @@ import java.util.List;
 
 %(annotation)s
 public interface %(class_name)s {
+    
+    /**
+     * pk select 문
+     */
+    JPAQuery<%(id_type)s> getKeySelectFrom();
+
+    /**
+     * column Expression 배열
+     */
+    Expression<?>[] getColumnExpressions();
+    
     /**
      * 조건에 해당하는 목록 페이징 조회
      */
@@ -181,6 +194,27 @@ def make_method_pk_select(table):
         , 'table_field_name': table.table_field_name
     }
 
+# QdslRepositoryCoreImpl#getWhereBuilder 메소드의 본문 생성
+def make_method_columns_expressions(_column_info, table, fields):
+    columns_paths = []
+    for field in fields:
+        java_field = field.java_field_name
+        columns_paths.append("""%(qclass_name)s.%(field_name)s""" % {
+            'qclass_name': table.table_field_name,
+            'field_name': java_field
+        })
+
+    method = """public Expression<?>[] getColumnExpressions() 
+    {
+        return new Expression<?>[] {
+            %(columns_paths)s
+        };
+    }
+"""
+
+    return method % {
+        'columns_paths': (",\n" + config._SP12).join(columns_paths)
+    }
 
 # QdslRepositoryCoreImpl#getWhereBuilder 메소드의 본문 생성
 def make_method_columns_where(_column_info, table, fields):
@@ -444,6 +478,7 @@ def make_querydsl_repository_impl_core(_column_info, _package_path_info, table, 
     import_qclass_src = common.make_import_code('static {}.{}.{}'.format(entity_package, table.table_qclass_name, t_field_name))
     pk_select = make_method_pk_select(table)
     columns_where = make_method_columns_where(_column_info, table, fields)
+    columns_expressions = make_method_columns_expressions(_column_info, table, fields)
     pk_where = make_method_pk_where(table, fields, pk_params)
     pk_in_where = make_method_pk_in_where(table)
     find_page_by_where = make_method_find_page(table)
@@ -464,10 +499,7 @@ def make_querydsl_repository_impl_core(_column_info, _package_path_info, table, 
     repository = """package %(gen_package)s;
     
 import com.querydsl.core.BooleanBuilder;
-import com.querydsl.core.types.Order;
-import com.querydsl.core.types.OrderSpecifier;
-import com.querydsl.core.types.Path;
-import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.*;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
@@ -492,6 +524,11 @@ public class %(class_name)s implements %(interface_class_name)s
      * pk select 문
      */
     %(pk_select)s
+    
+    /**
+     * columns expressions 배열
+     */
+    %(columns_expressions)s
      
      /**
      * columns where 절
@@ -533,6 +570,7 @@ public class %(class_name)s implements %(interface_class_name)s
         , 'jdbc_template_di': jdbc_template_di
         , 'table_class_name': t_class_name
         , 'pk_select': pk_select
+        , 'columns_expressions': columns_expressions
         , 'columns_where': columns_where
         , 'pk_where': pk_where
         , 'pk_in_where': pk_in_where
