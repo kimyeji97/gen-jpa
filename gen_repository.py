@@ -182,17 +182,15 @@ def make_method_pk_select(table):
     for pk in table.primary_keys:
         pk_qclass_columns.append("{}.{}".format(table.table_field_name, pk.java_field_name))
 
+    select_sql = ", ".join(pk_qclass_columns) if len(pk_qclass_columns) == 1 else """Projections.fields(%(primary_keys_java_type)s.class,
+                        %(pk_qclass_columns)s
+                )""" % {'primary_keys_java_type': table.primary_keys_java_type, 'pk_qclass_columns': ", ".join(pk_qclass_columns)}
     return """public JPAQuery<%(primary_keys_java_type)s> getKeySelectFrom() 
     {
-        return jpaQueryFactory.select(Projections.fields(%(primary_keys_java_type)s.class,
-                        %(pk_qclass_columns)s
-                )).from(%(table_field_name)s);
+        return jpaQueryFactory.select(%(select_sql)s)
+                .from(%(table_field_name)s);
     }    
-""" % {
-        'primary_keys_java_type': table.primary_keys_java_type
-        , 'pk_qclass_columns': ", ".join(pk_qclass_columns)
-        , 'table_field_name': table.table_field_name
-    }
+""" % {'primary_keys_java_type': table.primary_keys_java_type,'select_sql': select_sql , 'table_field_name': table.table_field_name}
 
 # QdslRepositoryCoreImpl#getWhereBuilder 메소드의 본문 생성
 def make_method_columns_expressions(_column_info, table, fields):
