@@ -27,6 +27,15 @@ __FILE_ANNOTATION__ = """
  * @author Kim Yeji
  */"""
 
+__EX_ANNOTATION__ = """
+/**
+ * {}
+ * <pre>
+ *    This is an automatically generated file.
+ * </pre>
+ * @author Kim Yeji
+ */"""
+
 
 __HELP__ = """
     command: python3 ./gen.py {system} {options}

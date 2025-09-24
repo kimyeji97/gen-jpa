@@ -8,6 +8,7 @@ import config as config
 # entity & entity ID Core 생성
 def make_java_entity_core(_column_info, _package_path_info, table, fields, model_gen_package, is_entity_id=False):
     class_name = table.table_entity_core_name if not is_entity_id else table.primary_keys_java_type
+    use_implement = table.use_implement()
 
     source_prefix = [
         common.make_import_code(_package_path_info.base_entity_package)
@@ -15,13 +16,16 @@ def make_java_entity_core(_column_info, _package_path_info, table, fields, model
         , common.make_import_code(_package_path_info.lombok_data)
         , common.make_import_code(_package_path_info.lombok_extend_hashcode)
         , common.make_import_code(_package_path_info.jpa_auditing)
-        , '' if not table.is_multiple_key() else common.make_import_code('{}.{}'.format(_package_path_info.core_entity_id_package, table.primary_keys_java_type))
+        , '' if not table.is_multiple_key() else common.make_import_code(
+            '{}.{}'.format(_package_path_info.core_entity_id_package, table.primary_keys_java_type))
     ] if not is_entity_id else [
         common.make_import_code(_package_path_info.lombok_data)
         , common.make_import_code(_package_path_info.lombok_all_args_const)
         , common.make_import_code(_package_path_info.lombok_no_args_const)
         , common.make_import_code(_package_path_info.serializable)
     ]
+    if use_implement:
+        source_prefix += [common.make_import_code(table.get_interface_package())]
 
     source = [
         "@IdClass({}.class)".format(table.primary_keys_java_type)
@@ -33,17 +37,23 @@ def make_java_entity_core(_column_info, _package_path_info, table, fields, model
             , "@MappedSuperclass"  # 부모 엔티티를 따르기 위함
             , "@EqualsAndHashCode(callSuper = true)"
             , "@EntityListeners(value = { AuditingEntityListener.class })"  # 엔티티 영속성 탐지
-            , "public class {} extends BaseDomain".format(class_name)
-            , "{"
         ]
+        if use_implement:
+            source += ["public class {} extends BaseDomain implements {}".format(class_name, table.get_interface_type())]
+        else:
+            source += ["public class {} extends BaseDomain".format(class_name)]
     else:
         source += [
             "@Data"
             , "@NoArgsConstructor"
             , "@AllArgsConstructor"
-            , "public class {} implements Serializable".format(class_name)
-            , "{"
         ]
+        if use_implement:
+            source += ["public class {} implements Serializable, {}".format(class_name, table.get_interface_type())]
+        else:
+            source += ["public class {} implements Serializable".format(class_name)]
+
+    source += ["{"]
 
     write_only_source = []
 
@@ -74,7 +84,7 @@ def make_java_entity_core(_column_info, _package_path_info, table, fields, model
 
             # 2. @Column
             column_values = [
-                "name = \"" + field.name+"\""
+                "name = \"" + field.name + "\""
             ]
             if _column_info.include_update_dt_columns(field.name) or field.is_pk:
                 column_values.append("updatable = false")
@@ -191,13 +201,13 @@ def make_java_entity_ex(_column_info, _package_path_info, table, fields, reposit
         , '@Entity'
         , '@NoArgsConstructor'
         , '@Table(name = "{}")'.format(table.table_name)
-        , "@EqualsAndHashCode(callSuper = false)"
+        , "@EqualsAndHashCode(callSuper = true)"
         , "public class {} extends {}".format(class_name, core_class_name)
         , "{"
         , "}"
     ]
 
-    source.insert(0, config.__FILE_ANNOTATION__.format("[TABLE] " + table.table_name))
+    source.insert(0, config.__EX_ANNOTATION__.format("[TABLE] " + table.table_name))
 
     source_prefix = sorted(list(set(source_prefix)))
     source_prefix.insert(0, common.make_package_code(model_package))

@@ -142,6 +142,15 @@ class Table:
     def is_multiple_key(self):
         return len(self.primary_keys) > 1
 
+    def use_implement(self):
+        return not isinstance(self.kwargs['interface'], type(None))
+
+    def get_interface_package(self):
+        return self.kwargs['interface']
+
+    def get_interface_type(self):
+        return self.kwargs['interface'].split('.').pop()
+
     def has_column(self, column_name):
         for field in self.fields:
             if field.name.lower() == column_name:
@@ -187,12 +196,11 @@ class TableField:
     def __init__(self, **kwargs):
         # field_attrs : {
         #   column_name : {
-        #        'fieldName': ''
-        #        , 'javaType': ''
-        #        , 'converterType: ''
-        #        , 'jsonProperties': ''
-        #        , 'sequenceName': ''
-        #        , 'enumType': ''
+        #        'field_name': ''
+        #        , 'java_type': ''
+        #        , 'convert_type: ''
+        #        , 'json_props': ''
+        #        , 'sequence_name': ''
         #    }
         # }
         self.field_attrs = kwargs['field_attrs']
@@ -288,6 +296,9 @@ class TableField:
         elif type_name.startswith("date"):
             self.java_type_package = 'java.time.LocalDate'
             return 'LocalDate'
+        elif type_name.startswith("time"):
+            self.java_type_package = 'java.time.LocalTime'
+            return 'LocalTime'
         elif type_name.startswith("bigint") or type_name.startswith('serial') or type_name.startswith('int8'):
             if name in config.FIELD_NAME_ENUM_TYPES:
                 self.java_type_package = _package_path_info.enum_package + "." + config.FIELD_NAME_ENUM_TYPES[name]
@@ -508,7 +519,7 @@ def get_field_info(table_name, connection_opts, con_schema, field_attrs={}):
     return rows
 
 
-def write_file(category, group, file_name, data):
+def write_file(path, category, group, file_name, data):
     global tmpfolder
     if category is None or len(category) == 0:
         # tmpdir_all = os.path.join(config.__TEMP_DIR__, 'jpa-gen-' + tmpfolder)
@@ -517,14 +528,15 @@ def write_file(category, group, file_name, data):
         # tmpdir_all = os.path.join(config.__TEMP_DIR__, 'jpa-gen-' + tmpfolder, category)
         tmpdir = os.path.join(config.__TEMP_DIR__, 'jpa-gen-' + tmpfolder, category, group)
 
-    if not os.path.exists(tmpdir):
-        os.makedirs(tmpdir)
-
     write_file_core(tmpdir, file_name, data)
-    # write_file_core(tmpdir_all, file_name, data)
-
+    if not os.path.exists(os.path.join(path, group, file_name)):
+        write_file_core(os.path.join(path, group), file_name, data)
+        # write_file_core(tmpdir_all, file_name, data)
 
 def write_file_core(path, file_name, data):
+    if not os.path.exists(path):
+        os.makedirs(path)
+
     with open(os.path.join(path, file_name), 'w') as f:
         f.write(data)
 
@@ -539,7 +551,7 @@ def generate_jpa_files(gen_targets, table_name, category, repository_package, en
         print("\r\nGenerated FAIL !!! : {} ====> no colums\r\n".format(table_name))
         return
 
-    table = Table(table_name, db_fields, pk=field_attrs.get('pk'))
+    table = Table(table_name, db_fields, pk=field_attrs.get('pk'), interface=field_attrs.get('interface'))
 
 
     is_make_entity = config.__GEN_TARGET__[0] in gen_targets
@@ -549,9 +561,10 @@ def generate_jpa_files(gen_targets, table_name, category, repository_package, en
     if len(gen_targets) == 0 or is_make_entity:
         in_entity_src = gen_model.make_java_entity_core(_column_info, _package_path_info, table, db_fields, _package_path_info.core_entity_package)
         ex_entity_src = gen_model.make_java_entity_ex(_column_info, _package_path_info, table, db_fields, repository_package, entity_package)
+        ex_path = os.path.join(_package_path_info.project_src_path, _package_path_info.entity_package.replace('.', '/'))
 
         write_file_core(_package_path_info.core_entity_path, table.table_entity_core_name + '.java', in_entity_src)
-        write_file('entity', category, table.table_entity_name + '.java', ex_entity_src)
+        write_file(ex_path, 'entity', category, table.table_entity_name + '.java', ex_entity_src)
 
         if table.is_multiple_key():
             in_entity_id_src = gen_model.make_java_entity_core(_column_info, _package_path_info, table, db_fields, _package_path_info.core_entity_id_package, True)
@@ -565,11 +578,12 @@ def generate_jpa_files(gen_targets, table_name, category, repository_package, en
         ex_interface_src = gen_repository.make_repository_interface_ex(_column_info, _package_path_info, table, db_fields, repository_package,entity_package)
         ex_querydsl_interface_src = gen_repository.make_querydsl_repository_interface_ex(_column_info, _package_path_info, table, db_fields,repository_package, entity_package)
         ex_querydsl_impl_src = gen_repository.make_querydsl_repository_impl_ex(_column_info, _package_path_info, table, db_fields, repository_package,entity_package)
+        ex_path = os.path.join(_package_path_info.project_src_path, _package_path_info.repository_package.replace('.', '/'))
 
         write_file_core(_package_path_info.core_repository_path, table.table_qdsl_repository_core_interface_name + ".java", in_querydsl_interface_src)
         write_file_core(_package_path_info.core_repository_path, table.table_qdsl_repository_core_impl_name + ".java", in_querydsl_impl_src)
-        write_file('repository', category, table.table_repository_interface_name + ".java", ex_interface_src)
-        write_file('repository', category, table.table_qdsl_repository_interface_name + ".java", ex_querydsl_interface_src)
-        write_file('repository', category, table.table_qdsl_repository_impl_name + ".java", ex_querydsl_impl_src)
+        write_file(ex_path, 'repository', category, table.table_repository_interface_name + ".java", ex_interface_src)
+        write_file(ex_path, 'repository', category, table.table_qdsl_repository_interface_name + ".java", ex_querydsl_interface_src)
+        write_file(ex_path, 'repository', category, table.table_qdsl_repository_impl_name + ".java", ex_querydsl_impl_src)
 
     print("Generated : {}".format(table_name))
