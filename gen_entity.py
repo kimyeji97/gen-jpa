@@ -8,7 +8,6 @@ import config as config
 # entity & entity ID Core 생성
 def make_java_entity_core(_column_info, _package_path_info, table, fields, model_gen_package, is_entity_id=False):
     class_name = table.table_entity_core_name if not is_entity_id else table.primary_keys_java_type
-    use_implement = table.use_implement()
 
     source_prefix = [
         common.make_import_code(_package_path_info.base_entity_package)
@@ -24,8 +23,6 @@ def make_java_entity_core(_column_info, _package_path_info, table, fields, model
         , common.make_import_code(_package_path_info.lombok_no_args_const)
         , common.make_import_code(_package_path_info.serializable)
     ]
-    if use_implement:
-        source_prefix += [common.make_import_code(table.get_interface_package())]
 
     source = [
         "@IdClass({}.class)".format(table.primary_keys_java_type)
@@ -37,23 +34,17 @@ def make_java_entity_core(_column_info, _package_path_info, table, fields, model
             , "@MappedSuperclass"  # 부모 엔티티를 따르기 위함
             , "@EqualsAndHashCode(callSuper = true)"
             , "@EntityListeners(value = { AuditingEntityListener.class })"  # 엔티티 영속성 탐지
+            , "public class {} extends BaseDomain".format(class_name)
+            , "{"
         ]
-        if use_implement:
-            source += ["public class {} extends BaseDomain implements {}".format(class_name, table.get_interface_type())]
-        else:
-            source += ["public class {} extends BaseDomain".format(class_name)]
     else:
         source += [
             "@Data"
             , "@NoArgsConstructor"
             , "@AllArgsConstructor"
+            , "public class {} implements Serializable".format(class_name)
+            , "{"
         ]
-        if use_implement:
-            source += ["public class {} implements Serializable, {}".format(class_name, table.get_interface_type())]
-        else:
-            source += ["public class {} implements Serializable".format(class_name)]
-
-    source += ["{"]
 
     write_only_source = []
 
@@ -184,6 +175,7 @@ def make_java_entity_core(_column_info, _package_path_info, table, fields, model
 def make_java_entity_ex(_column_info, _package_path_info, table, fields, repository_package, model_package):
     core_class_name = table.table_entity_core_name
     class_name = table.table_entity_name
+    use_implement = table.use_implement()
 
     source_prefix = [
         common.make_import_code(_package_path_info.core_entity_package + "." + core_class_name)
@@ -194,6 +186,8 @@ def make_java_entity_ex(_column_info, _package_path_info, table, fields, reposit
         , common.make_import_code(_package_path_info.lombok_extend_hashcode)
         , common.make_import_code(_package_path_info.lombok_no_args_const)
     ]
+    if use_implement:
+        source_prefix += [common.make_import_code(table.get_interface_package())]
 
     source = [
         '@Data'
@@ -202,7 +196,7 @@ def make_java_entity_ex(_column_info, _package_path_info, table, fields, reposit
         , '@NoArgsConstructor'
         , '@Table(name = "{}")'.format(table.table_name)
         , "@EqualsAndHashCode(callSuper = true)"
-        , "public class {} extends {}".format(class_name, core_class_name)
+        , "public class {} extends {}".format(class_name, "{} implements {}".format(core_class_name, table.get_interface_type()) if use_implement else core_class_name)
         , "{"
         , "}"
     ]
